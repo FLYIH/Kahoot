@@ -2,7 +2,7 @@
 #define GAME_SCREEN_H
 
 #include <SFML/Graphics.hpp>
-#include "network.h"
+#include "client.h"
 
 class GameScreen {
 public:
