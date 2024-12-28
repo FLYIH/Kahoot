@@ -1,6 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include "MainMenu.h"
-#include "GameScreen.h"
+#include "sfml_gui.h"
 
 int main() {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Kahoot");
@@ -15,15 +15,12 @@ int main() {
             mainMenu.render(window);
         }
         else if (state == 1) {
-            // 遊戲畫面 (後續擴展)
-            //gameScreen.handleEvents(window);
-            //gameScreen.update();
-            //gameScreen.render(window);
+            //run_sfml_gui();
+            run_sfml_gui(window, state);
         }
         else if (state == 2) {
             // 上傳題目畫面 (後續擴展)
         }
     }
-
     return 0;
 }

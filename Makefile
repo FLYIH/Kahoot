@@ -1,18 +1,29 @@
+include ../Make.defines
+
 CXX = g++
 CXXFLAGS = -Wall -g
-LIBS = -lsfml-graphics -lsfml-window -lsfml-system
+SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system
+PROGS =	server client_gui
 
-SRC = src
-TARGET = kahoot
-OBJS = $(SRC)/main.o $(SRC)/MainMenu.o
+all:	${PROGS}
+		
+server:	server.o
+		${CC} ${CFLAGS} -o $@ server.o ${LIBS}
 
-all: $(TARGET)
+client_gui:	client.o sfml_gui.o MainMenu.o main.o
+		${CXX} ${CXXFLAGS} -I../lib -o $@ client.o sfml_gui.o MainMenu.o main.o ${LIBS} ${SFML_LIBS}
 
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
+client.o:	client.c
+		${CC} ${CFLAGS} -c client.c -o client.o
 
-$(SRC)/%.o: $(SRC)/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+sfml_gui.o:	sfml_gui.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c sfml_gui.cpp -o sfml_gui.o
+
+MainMenu.o:	MainMenu.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c MainMenu.cpp -o MainMenu.o
+
+main.o:	main.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c main.cpp -o main.o
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+		rm -f ${PROGS} *.o
