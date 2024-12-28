@@ -15,10 +15,6 @@ int connect_to_server(const char *ip_address) {
     return sockfd;
 }
 
-void send_message(int sockfd, const char *message) {
-    Write(sockfd, message, strlen(message));
-}
-
 void send_and_receive(int sockfd, const char *message, char *response, size_t response_size) {
     char sendline[MAXLINE];
 

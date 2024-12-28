@@ -3,6 +3,6 @@
 
 #include <SFML/Graphics.hpp>
 
-void run_sfml_gui(sf::RenderWindow& window, int& state);
+void run_sfml_gui(sf::RenderWindow& window, int& state, int sockfd);
 
 #endif

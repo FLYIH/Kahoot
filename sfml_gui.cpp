@@ -4,7 +4,7 @@
 #include <string>
 #include "client.h"
 
-void run_sfml_gui(sf::RenderWindow& window, int& state) {
+void run_sfml_gui(sf::RenderWindow& window, int& state, int sockfd) {
     sf::Font font;
 
     if (!font.loadFromFile("arial.ttf")) {
@@ -13,20 +13,17 @@ void run_sfml_gui(sf::RenderWindow& window, int& state) {
     }
 
     // Text fields and buttons
-    sf::Text ipText("Enter IP Address:", font, 20);
     sf::Text messageText("Enter Message:", font, 20);
     sf::Text sendButtonText("Submit", font, 20);
     sf::Text serverResponseText("Server Response:", font, 20);
     sf::Text backButtonText("Back to Menu", font, 20);
 
     // 設置文字顏色為黑色
-    ipText.setFillColor(sf::Color::Black);
     messageText.setFillColor(sf::Color::Black);
     sendButtonText.setFillColor(sf::Color::Black);
     serverResponseText.setFillColor(sf::Color::Black);
     backButtonText.setFillColor(sf::Color::Black);
 
-    ipText.setPosition(50, 50);
     messageText.setPosition(50, 150);
     sendButtonText.setPosition(260, 300);
     serverResponseText.setPosition(50, 350);
@@ -44,34 +41,26 @@ void run_sfml_gui(sf::RenderWindow& window, int& state) {
     backButton.setOutlineColor(sf::Color::Black);
     backButton.setOutlineThickness(2);
 
-    sf::String ipInput, messageInput;
-    sf::Text ipDisplay("", font, 20);
+    sf::String messageInput;
     sf::Text messageDisplay("", font, 20);
     sf::Text serverDisplay("", font, 20);
 
     // 設置輸入與回應文字顏色為黑色
-    ipDisplay.setFillColor(sf::Color::Black);
     messageDisplay.setFillColor(sf::Color::Black);
     serverDisplay.setFillColor(sf::Color::Black);
 
-    ipDisplay.setPosition(210, 50);
     messageDisplay.setPosition(210, 150);
     serverDisplay.setPosition(210, 350);
 
-    bool isEnteringIP = true;
     bool showCursor = true;
     sf::Clock cursorClock;
-
-    int sockfd = -1;
 
     while (window.isOpen() && state == 1) {
         sf::Event event;
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
-                if (sockfd != -1) {
-                    close_connection(sockfd);
-                }
+                close_connection(sockfd);
             }
 
             // Handle button clicks
@@ -79,58 +68,37 @@ void run_sfml_gui(sf::RenderWindow& window, int& state) {
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
                 if (sendButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
-                    // 按下 Submit 按鈕
-                    if (sockfd == -1) {
-                        std::string ip = ipInput.toAnsiString();
-                        sockfd = connect_to_server(ip.c_str());
-                        if (sockfd < 0) {
-                            std::cerr << "Failed to connect to server\n";
-                            window.close();
-                        }
-                    }
-
                     // 發送訊息
-                    if (!isEnteringIP) {
-                        std::string msg = messageInput.toAnsiString();
-                        std::string serverResponse;
-                        char responseBuffer[1024];
+                    std::string msg = messageInput.toAnsiString();
+                    std::string serverResponse;
+                    char responseBuffer[1024];
 
-                        try {
-                            send_and_receive(sockfd, msg.c_str(), responseBuffer, sizeof(responseBuffer));
-                            serverResponse = responseBuffer;
-                        } catch (const std::runtime_error &e) {
-                            std::cerr << e.what() << std::endl;
-                            window.close();
-                        }
-
-                        // 顯示伺服器回應
-                        messageInput.clear();
-                        serverDisplay.setString(serverResponse);
+                    try {
+                        send_and_receive(sockfd, msg.c_str(), responseBuffer, sizeof(responseBuffer));
+                        serverResponse = responseBuffer;
+                    } catch (const std::runtime_error& e) {
+                        std::cerr << e.what() << std::endl;
+                        window.close();
                     }
+
+                    // 顯示伺服器回應
+                    messageInput.clear();
+                    serverDisplay.setString(serverResponse);
                 } else if (backButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
                     // 返回主選單
                     state = 0;
+                    return;
                 }
             }
 
             // Handle text input
             if (event.type == sf::Event::TextEntered) {
                 if (event.text.unicode == '\b') { // Backspace
-                    if (isEnteringIP && !ipInput.isEmpty()) {
-                        ipInput.erase(ipInput.getSize() - 1);
-                    } else if (!isEnteringIP && !messageInput.isEmpty()) {
+                    if (!messageInput.isEmpty()) {
                         messageInput.erase(messageInput.getSize() - 1);
                     }
-                } else if (event.text.unicode == '\r') { // Enter key
-                    if (isEnteringIP) {
-                        isEnteringIP = false; // 切換到訊息輸入階段
-                    }
                 } else if (event.text.unicode < 128) { // Normal characters
-                    if (isEnteringIP) {
-                        ipInput += static_cast<char>(event.text.unicode);
-                    } else {
-                        messageInput += static_cast<char>(event.text.unicode);
-                    }
+                    messageInput += static_cast<char>(event.text.unicode);
                 }
             }
         }
@@ -142,19 +110,16 @@ void run_sfml_gui(sf::RenderWindow& window, int& state) {
         }
 
         // Update display text with cursor
-        ipDisplay.setString(isEnteringIP ? ipInput + (showCursor ? "|" : "") : ipInput);
-        messageDisplay.setString(!isEnteringIP ? messageInput + (showCursor ? "|" : "") : messageInput);
+        messageDisplay.setString(messageInput + (showCursor ? "|" : ""));
 
         // Draw UI
         window.clear(sf::Color(255, 239, 213)); // 設置背景為鵝黃色
-        window.draw(ipText);
         window.draw(messageText);
         window.draw(sendButton);
         window.draw(sendButtonText);
         window.draw(serverResponseText);
         window.draw(backButton);
         window.draw(backButtonText);
-        window.draw(ipDisplay);
         window.draw(messageDisplay);
         window.draw(serverDisplay);
         window.display();

@@ -11,7 +11,6 @@ extern "C" {
 int connect_to_server(const char *ip_address);
 
 // Send a message to the server
-void send_message(int sockfd, const char *message);
 void send_and_receive(int sockfd, const char *message, char *response, size_t response_size);
 
 // Close the connection
