@@ -1,192 +1,139 @@
-#include	"unp.h"
-#include	<stdlib.h>
-#include	<stdio.h>
-#include    <string.h>
+#include "unp.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-void
-sig_chld(int signo){
-    pid_t   pid;
-    int     stat;
+#define MAX_CHATROOMS 10
+#define MAX_USERS_PER_ROOM 4
+
+struct ChatRoom {
+    int user_count;
+    int connfds[MAX_USERS_PER_ROOM];
+    char usernames[MAX_USERS_PER_ROOM][20];
+};
+
+struct ChatRoom chatrooms[MAX_CHATROOMS];
+
+void sig_chld(int signo) {
+    pid_t pid;
+    int stat;
     while ((pid = waitpid(-1, &stat, WNOHANG)) > 0);
     return;
 }
 
-int main(int argc, char **argv){
-	int			        listenfd, connfd1, connfd2, n, client_count, maxfdp1;
-    int                 flag1, flag2; 
-	pid_t			    childpid;
-	socklen_t		    clilen1, clilen2;
-	struct sockaddr_in	cliaddr1, cliaddr2, servaddr;
-    char                buff[MAXLINE], recvline[MAXLINE], sendline[MAXLINE];
-    char                name1[20], name2[20], compare[MAXLINE]; 
-    char                message1[100] = "You are the 1st user. Wait for the second one!\n";
-    char                message2[100] = "You are the 2nd user.\n";
-    time_t			    ticks;
-    fd_set              rset; 
+int find_available_room() {
+    for (int i = 0; i < MAX_CHATROOMS; i++) {
+        if (chatrooms[i].user_count < MAX_USERS_PER_ROOM)
+            return i;
+    }
+    return -1;
+}
 
-    // for TCP server
-	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
-	bzero(&servaddr, sizeof(servaddr));
-	servaddr.sin_family      = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	servaddr.sin_port        = htons(SERV_PORT + 4);
-	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
-	Listen(listenfd, LISTENQ);
-    Signal(SIGCHLD, sig_chld);      /* must call waitpid() */
+void broadcast_to_room(int room_id, const char *message, int exclude_fd) {
+    printf("Broadcasting in room %d: %s", room_id, message); // 調試輸出
+    for (int i = 0; i < chatrooms[room_id].user_count; i++) {
+        if (chatrooms[room_id].connfds[i] != exclude_fd) {
+            Writen(chatrooms[room_id].connfds[i], message, strlen(message));
+        }
+    }
+}
+
+
+int main(int argc, char **argv) {
+    int listenfd, connfd, maxfdp1;
+    socklen_t clilen;
+    struct sockaddr_in cliaddr, servaddr;
+    fd_set rset;
+    char recvline[MAXLINE], sendline[MAXLINE];
+    
+    listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(SERV_PORT + 4);
+    Bind(listenfd, (SA *)&servaddr, sizeof(servaddr));
+    Listen(listenfd, LISTENQ);
+    Signal(SIGCHLD, sig_chld);
 
     printf("Server started. Listening on port %d\n", SERV_PORT + 4);
-	while (1) {
-        // Receive IDs from 2 clients
-        client_count = 0;
-        while (client_count != 2){
-            if (client_count == 0){ // first user
-                clilen1 = sizeof(cliaddr1);
-                if ((connfd1 = accept(listenfd, (SA *) &cliaddr1, &clilen1)) < 0) {
-                    if (errno == EINTR) continue; // try again
-                    else err_sys("accept error");
+
+    // Initialize chatrooms
+    for (int i = 0; i < MAX_CHATROOMS; i++) {
+        chatrooms[i].user_count = 0;
+    }
+
+    while (1) {
+        clilen = sizeof(cliaddr);
+        if ((connfd = accept(listenfd, (SA *)&cliaddr, &clilen)) < 0) {
+            if (errno == EINTR)
+                continue;
+            else
+                err_sys("accept error");
+        }
+
+        printf("New connection from %s:%d\n",
+               Inet_ntop(AF_INET, &cliaddr.sin_addr, recvline, sizeof(recvline)),
+               ntohs(cliaddr.sin_port));
+
+        int room_id = find_available_room();
+        if (room_id == -1) {
+            snprintf(sendline, sizeof(sendline), "All chatrooms are full. Try again later.\n");
+            Writen(connfd, sendline, strlen(sendline));
+            Close(connfd);
+            continue;
+        }
+
+        struct ChatRoom *room = &chatrooms[room_id];
+        int user_index = room->user_count;
+        room->connfds[user_index] = connfd;
+        room->user_count++;
+
+        // Read username
+        int n = Read(connfd, room->usernames[user_index], sizeof(room->usernames[user_index]) - 1);
+        room->usernames[user_index][n] = '\0';
+
+        snprintf(sendline, sizeof(sendline), "Welcome to chatroom %d, %s!\n", room_id, room->usernames[user_index]);
+        Writen(connfd, sendline, strlen(sendline));
+
+        snprintf(sendline, sizeof(sendline), "%s has joined the chatroom.\n", room->usernames[user_index]);
+        broadcast_to_room(room_id, sendline, connfd);
+
+        if (Fork() == 0) {
+            Close(listenfd);
+            FD_ZERO(&rset);
+
+            while (1) {
+                FD_SET(connfd, &rset);
+                maxfdp1 = connfd + 1;
+                Select(maxfdp1, &rset, NULL, NULL, NULL);
+
+                if (FD_ISSET(connfd, &rset)) {
+                    int n = Read(connfd, recvline, MAXLINE);
+                    if (n <= 0) {
+                        printf("User %s disconnected from chatroom %d.\n", room->usernames[user_index], room_id);
+                        snprintf(sendline, sizeof(sendline), "%s has left the chatroom.\n", room->usernames[user_index]);
+                        broadcast_to_room(room_id, sendline, connfd);
+                        Close(connfd);
+
+                        // Remove user from room
+                        for (int i = user_index; i < room->user_count - 1; i++) {
+                            room->connfds[i] = room->connfds[i + 1];
+                            strncpy(room->usernames[i], room->usernames[i + 1], sizeof(room->usernames[i]));
+                        }
+                        room->user_count--;
+                        exit(0);
+                    }
+
+                    recvline[n] = '\0';
+                    snprintf(sendline, sizeof(sendline), "%s: %s", room->usernames[user_index], recvline);
+                    printf("Received from user %s in room %d: %s", room->usernames[user_index], room_id, recvline);
+                    broadcast_to_room(room_id, sendline, connfd);
                 }
-                // printf("Client1 connected.\n");
-                printf("Client1 connected from %s:%d\n", 
-                            Inet_ntop(AF_INET, &cliaddr1.sin_addr, buff, sizeof(buff)), 
-                            ntohs(cliaddr1.sin_port));
-                n = Read(connfd1, name1, 20);
-                name1[n] = '\0';
-                // printf("Recv: %s\n", name1);
-                printf("Received ID from client1: %s\n", name1);
-                Writen(connfd1, message1, strlen(message1));
-                // printf("Sent: %s is the 1st user.\n", name1);
-                printf("Sent to client1: %s\n", message1);
-                getpeername(connfd1, (SA *) &cliaddr1, &clilen1);
-                client_count++;
-            } else if (client_count == 1){ // second user
-                clilen2 = sizeof(cliaddr2);
-                if ((connfd2 = accept(listenfd, (SA *) &cliaddr2, &clilen2)) < 0) {
-                    if (errno == EINTR) continue; // try again
-                    else err_sys("accept error");
-                }
-                // printf("Client2 connected.\n");
-                printf("Client2 connected from %s:%d\n", 
-                   Inet_ntop(AF_INET, &cliaddr2.sin_addr, buff, sizeof(buff)), 
-                   ntohs(cliaddr2.sin_port));
-                n = Read(connfd2, name2, 20);
-                name2[n] = '\0';
-                // printf("Recv: %s\n", name2);
-                printf("Received ID from client2: %s\n", name2);
-                Writen(connfd2, message2, strlen(message2)); 
-                // printf("Sent: %s is the 2nd user.\n", name2);
-                printf("Sent to client2: %s\n", message2);
-                getpeername(connfd2, (SA *) &cliaddr2, &clilen2);
-                client_count++;
             }
         }
 
-        printf("Both clients connected. Initiating chat session...\n");
-        // tell the other client about peer's info
-        snprintf(sendline, sizeof(sendline), "The second user is %s from %s\n", name2, 
-            Inet_ntop(AF_INET, (SA *) &cliaddr2.sin_addr, buff, sizeof(buff))); 
-        Writen(connfd1, sendline, strlen(sendline));
-        // printf("Sent: %s", sendline);
-        printf("Sent to client1: %s\n", sendline);
+        Close(connfd);
+    }
 
-        snprintf(sendline, sizeof(sendline), "The first user is %s from %s\n", name1, 
-            Inet_ntop(AF_INET, (SA *) &cliaddr1.sin_addr, buff, sizeof(buff))); 
-        Writen(connfd2, sendline, strlen(sendline));
-        // printf("Sent: %s", sendline);
-        printf("Sent to client2: %s\n", sendline);
-        
-        // fork child
-		if ( (childpid = Fork()) == 0) {	/* child process */
-			Close(listenfd);	/* close listening socket */
-            ticks = time(NULL);
-            printf ("===================\n%.24s: connected from %s, port %d and from %s, port %d.\n===================\n",
-                ctime(&ticks),
-                Inet_ntop(AF_INET, &cliaddr1.sin_addr, buff, sizeof (buff)),
-                ntohs(cliaddr1.sin_port), 
-                Inet_ntop(AF_INET, &cliaddr2.sin_addr, buff, sizeof (buff)),
-                ntohs(cliaddr2.sin_port));
-            srand((int) ticks);
-            // chat
-            flag1 = 0; 
-            flag2 = 0; 
-            FD_ZERO(&rset);
-            while(1){
-                FD_SET(connfd1, &rset);
-                FD_SET(connfd2, &rset);
-                maxfdp1 = max(connfd1, connfd2) + 1;
-                Select(maxfdp1, &rset, NULL, NULL, NULL);
-                // client 1 is readable 
-                if (FD_ISSET(connfd1, &rset)){ 
-                    // Receive from client 1
-                    n = Readline(connfd1, recvline, MAXLINE);
-                    if (n <= 0){
-                        printf("Client 1 disconnected.\n");
-                        flag1 = 1;
-                    } else { // Send to client 2
-                        snprintf(sendline, sizeof(sendline), "(%s) %s", name1, recvline);
-                        snprintf(compare, sizeof(compare), "(%s) \n", name1);
-                        if (strcmp(sendline, compare) != 0){
-                            Writen(connfd2, sendline, strlen(sendline));
-                            printf("Sent client1's message to client2.\n");
-                        }
-                    }
-                }
-                // client 2 is readable
-                if (FD_ISSET(connfd2, &rset)){ 
-                    // Receive from client 2
-                    n = Readline(connfd2, recvline, MAXLINE);
-                    if (n <= 0){
-                        printf("Client 2 disconnected.\n");
-                        flag2 = 1;
-                    } else { // Send to client 1
-                        snprintf(sendline, sizeof(sendline), "(%s) %s", name2, recvline);
-                        snprintf(compare, sizeof(compare), "(%s) \n", name2);
-                        if (strcmp(sendline, compare) != 0){
-                            Writen(connfd1, sendline, strlen(sendline));
-                            printf("Sent client2's message to client1.\n");
-                        }
-                    }
-                }
-                // client 1 disconnected
-                if (flag1){
-                    snprintf(sendline, sizeof(sendline), "(%s left the room. Press Ctrl + D to leave.)\n", name1);
-                    Writen(connfd2, sendline, strlen(sendline));
-                    printf("Informed client2 that client1 has disconnected.\n");
-                    shutdown(connfd2, SHUT_WR); // send FIN to client 2
-                    printf("Shutting down client2's connection.\n");
-                    Readn(connfd2, recvline, MAXLINE);
-                    snprintf(sendline, sizeof(sendline), "(%s left the room.)\n", name2);
-                    Writen(connfd1, sendline, strlen(sendline));
-                    printf("Informed client1 that client2 has disconnected.\n");
-                    shutdown(connfd1, SHUT_WR); // send FIN to client 1
-                    printf("Shutting down client1's connection.\n");
-                    Close(connfd2);
-                    Close(connfd1);
-                    break; 
-                }
-                // client 2 disconnected 
-                if (flag2){
-                    snprintf(sendline, sizeof(sendline), "(%s left the room. Press Ctrl + D to leave.)\n", name2);
-                    Writen(connfd1, sendline, strlen(sendline));
-                    printf("Informed client1 that client2 has disconnected.\n");
-                    shutdown(connfd1, SHUT_WR); // send FIN to client 1
-                    printf("Shutting down client1's connection.\n");
-                    Readn(connfd1, recvline, MAXLINE);
-                    snprintf(sendline, sizeof(sendline), "(%s left the room.)\n", name1);
-                    Writen(connfd2, sendline, strlen(sendline));
-                    printf("Informed client2 that client1 has disconnected.\n");
-                    shutdown(connfd2, SHUT_WR); // send FIN to client 2
-                    printf("Shutting down client2's connection.\n");
-                    Close(connfd2);
-                    Close(connfd1); 
-                    break; 
-                }
-            }
-			exit(0);
-		}
-
-		Close(connfd1);			/* parent closes connected socket */
-        Close(connfd2);
-	}
-    printf("Server terminated.\n");
     return 0;
 }

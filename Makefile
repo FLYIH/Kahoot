@@ -10,6 +10,9 @@ all:	${PROGS}
 server:	server.o
 		${CC} ${CFLAGS} -o $@ server.o ${LIBS}
 
+test_client:	test_client.o
+		${CC} ${CFLAGS} -o $@ test_client.o ${LIBS}
+
 client_gui:	client.o sfml_gui.o MainMenu.o main.o
 		${CXX} ${CXXFLAGS} -I../lib -o $@ client.o sfml_gui.o MainMenu.o main.o ${LIBS} ${SFML_LIBS}
 
