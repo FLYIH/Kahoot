@@ -1,0 +1,29 @@
+{
+    "questions": [
+        {
+            "question": "What is the capital of Japan?",
+            "options": ["1. Seoul", "2. Beijing", "3. Tokyo", "4. Bangkok"],
+            "correct_option": 3
+        },
+        {
+            "question": "What is 5 x 6?",
+            "options": ["1. 25", "2. 30", "3. 35", "4. 40"],
+            "correct_option": 2
+        },
+        {
+            "question": "Which is the smallest continent by area?",
+            "options": ["1. Africa", "2. Europe", "3. Australia", "4. South America"],
+            "correct_option": 3
+        },
+        {
+            "question": "Who developed the theory of relativity?",
+            "options": ["1. Isaac Newton", "2. Nikola Tesla", "3. Albert Einstein", "4. Galileo Galilei"],
+            "correct_option": 3
+        },
+        {
+            "question": "What is the square root of 144?",
+            "options": ["1. 10", "2. 11", "3. 12", "4. 13"],
+            "correct_option": 3
+        }
+    ]
+}
