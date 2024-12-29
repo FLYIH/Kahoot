@@ -1,0 +1,29 @@
+{
+    "questions": [
+        {
+            "question": "Which is the largest planet in our solar system?",
+            "options": ["1. Earth", "2. Jupiter", "3. Saturn", "4. Neptune"],
+            "correct_option": 2
+        },
+        {
+            "question": "What is the freezing point of water in Celsius?",
+            "options": ["1. 0°C", "2. 32°C", "3. 100°C", "4. -10°C"],
+            "correct_option": 1
+        },
+        {
+            "question": "What is the square of 8?",
+            "options": ["1. 48", "2. 64", "3. 72", "4. 80"],
+            "correct_option": 2
+        },
+        {
+            "question": "What is the capital of Germany?",
+            "options": ["1. Berlin", "2. Vienna", "3. Munich", "4. Frankfurt"],
+            "correct_option": 1
+        },
+        {
+            "question": "Which organ in the human body is responsible for pumping blood?",
+            "options": ["1. Lungs", "2. Liver", "3. Heart", "4. Brain"],
+            "correct_option": 3
+        }
+    ]
+}
