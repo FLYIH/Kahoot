@@ -88,7 +88,7 @@ void MainMenu::handleEvents(sf::RenderWindow& window, int& state, std::string& i
 
                 if (joinButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
                     ipAddress = ipInput;
-                    sockfd = connect_to_server(ipAddress.c_str()); // 嘗試連接伺服器
+                    sockfd = connect_to_server(ipAddress.c_str());
                     if (sockfd < 0) {
                         std::cerr << "Failed to connect to server\n";
                         return;
@@ -103,7 +103,7 @@ void MainMenu::handleEvents(sf::RenderWindow& window, int& state, std::string& i
                         std::cerr << "Failed to connect to server\n";
                         return;
                     }
-                    state = 2; // 切換到上傳畫面
+                    state = 4; // 切換到上傳畫面
                 }
             }
         }
