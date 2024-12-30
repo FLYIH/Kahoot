@@ -44,6 +44,7 @@ void run_waiting_screen(sf::RenderWindow& window, int& state, int sockfd) {
             }
             if (strcmp(recvline, "waiting\n") != 0) {
                 numberText.setString(recvline);
+                state = 3;
             }
         }
 

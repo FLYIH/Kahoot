@@ -6,4 +6,4 @@
 
 void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd);
 
-#endif // QUIZSCREEN_H
+#endif

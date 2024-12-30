@@ -27,11 +27,12 @@ int main() {
         } else if (state == 2) {
             //std::cout << "waiting\n";
             run_waiting_screen(window, state, sockfd);
-            state = 0;
-        } else if (state = 3) {
-            std::cout << "game\n";
+            //state = 0;
+        } else if (state == 3) {
             run_quiz_screen(window, state, sockfd);
             state = 0;
+        } else if (state == 4) {
+            // ranking
         } else if (state == 4) {
             std::cout << "upoad question";
         }
