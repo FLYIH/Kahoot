@@ -3,6 +3,8 @@
 #include "sfml_gui.h"
 #include "WaitingScreen.h"
 #include "QuizScreen.h"
+#include "RankingScreen.h"
+#include "ResultScreen.h"
 #include "client.h"
 
 int main() {
@@ -30,10 +32,13 @@ int main() {
             //state = 0;
         } else if (state == 3) {
             run_quiz_screen(window, state, sockfd);
-            state = 0;
+            //state = 0;
         } else if (state == 4) {
-            // ranking
-        } else if (state == 4) {
+            std::cout << "result\n";
+            test_result_screen(window, state, sockfd);
+        } else if (state == 5) {
+            run_ranking_screen(window, state, sockfd);
+        } else if (state == 6) {
             std::cout << "upoad question";
         }
     }

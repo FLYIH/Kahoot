@@ -17,7 +17,7 @@ void run_waiting_screen(sf::RenderWindow& window, int& state, int sockfd) {
 
     // Add a green box behind the numberText
     sf::RectangleShape numberBox(sf::Vector2f(50, 50)); // Size of the box
-    numberBox.setFillColor(sf::Color(34, 139, 34)); // 綠色背景
+    numberBox.setFillColor(sf::Color(32, 141, 138)); // 綠色背景
     numberBox.setPosition(50, 200); // Align the box to the left corner
 
     char recvline[MAXLINE]; // Buffer to store received messages
@@ -44,7 +44,6 @@ void run_waiting_screen(sf::RenderWindow& window, int& state, int sockfd) {
             }
             if (strcmp(recvline, "waiting\n") != 0) {
                 numberText.setString(recvline);
-                state = 3;
             }
         }
 

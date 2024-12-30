@@ -53,7 +53,8 @@ void run_sfml_gui(sf::RenderWindow& window, int& state, int sockfd) {
                         // Submit the name to the server
                         std::string name = nameInput.toAnsiString();
                         send_name(sockfd, name.c_str());
-                        state = 2;
+                        // for test
+                        state = 3;
                         return;
                     }
                 } else if (event.text.unicode < 128) { // Normal characters

@@ -103,7 +103,7 @@ void MainMenu::handleEvents(sf::RenderWindow& window, int& state, std::string& i
                         std::cerr << "Failed to connect to server\n";
                         return;
                     }
-                    state = 4; // 切換到上傳畫面
+                    state = 5; // 切換到上傳畫面
                 }
             }
         }
