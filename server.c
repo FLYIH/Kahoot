@@ -104,11 +104,7 @@ int main(int argc, char **argv)
 					flag = 1;
 					id[i] = counter;
 					++counter;
-					// printf("OK\n");
 					sprintf(name[i], "%s", str);
-					// printf("OK\n");
-					// writen(participant[i], how_many, strlen(how_many));
-					// printf("OK\n");
 					break;
 				}
 			}
@@ -130,7 +126,6 @@ int main(int argc, char **argv)
 						id[i] = counter;
 						++counter;
 						sprintf(name[i], "%s", str);
-						// writen(participant[i], how_many, strlen(how_many));
 						break;
 					}
 				}
@@ -152,7 +147,6 @@ int main(int argc, char **argv)
 						id[i] = counter;
 						++counter;
 						sprintf(name[i], "%s", str);
-						// writen(participant[i], how_many, strlen(how_many));
 						break;
 					}
 				}
@@ -173,7 +167,6 @@ int main(int argc, char **argv)
 						id[i] = counter;
 						++counter;
 						sprintf(name[i], "%s", str);
-						// writen(participant[i], how_many, strlen(how_many));
 						break;
 					}
 				}
@@ -242,6 +235,7 @@ kahoot_game(void *vptr)
 	fd_set fd;
 	const char your_turn[200] = "answer\n";
 	const char not_your_turn[200] = "wait\n";
+	const char game_start[200] = "GameStart\n";
 	char user_time[MAXLINE], mes[MAXLINE];
 	int maxfdp1, people = 0, score[4] = {0}, num_ans, k, turn = 0, answer = 0, quit;
 	double tmp_f;
@@ -360,6 +354,25 @@ kahoot_game(void *vptr)
 					Pthread_mutex_unlock(&(mutex[room_num]));
 					sleep(2);
 				}
+			}
+		}
+
+		// 遊戲開始前倒數五秒
+		for (int i = 5; i > 0; i--) {
+			char countdown[50];
+			sprintf(countdown, "Game starts in %d seconds\n", i);
+			for (int j = ROOM; j < ROOM + 4; j++) {
+				if (participant[j] != -1) {
+					writen(participant[j], countdown, strlen(countdown));
+				}
+			}
+			sleep(1);
+		}
+
+		// 傳送 "GameStart" 給所有參與者
+		for (int i = ROOM; i < ROOM + 4; i++) {
+			if (participant[i] != -1) {
+				writen(participant[i], game_start, strlen(game_start));
 			}
 		}
 
