@@ -236,7 +236,8 @@ kahoot_game(void *vptr)
 	const char your_turn[200] = "answer\n";
 	const char not_your_turn[200] = "wait\n";
 	const char game_start[200] = "GameStart\n";
-	const char question_start[200] = "Question\n";
+	const char question_start[200] = "QuestionStart\n";
+	const char timeout_msg[200] = "Timeout\n";
 	char user_time[MAXLINE], mes[MAXLINE];
 	int maxfdp1, people = 0, score[4] = {0}, num_ans, k, turn = 0, answer = 0, quit;
 	double tmp_f;
@@ -399,7 +400,7 @@ kahoot_game(void *vptr)
 				sleep(1);
 			}
 
-			// 傳送 "Question" 給所有參與者
+			// 傳送 "QuestionStart" 給所有參與者
 			for (int i = ROOM; i < ROOM + 4; i++) {
 				if (participant[i] != -1) {
 					writen(participant[i], question_start, strlen(question_start));
@@ -492,7 +493,15 @@ kahoot_game(void *vptr)
 			timeout.tv_sec = 10; // 設定答題時間為10秒
 			timeout.tv_usec = 200;
 			num_ans = select(participant[ROOM + turn] + 1, &fd, NULL, NULL, &timeout);
-			if (num_ans != 0)
+			if (num_ans == 0) // 如果超時
+			{
+				for (int i = ROOM; i < ROOM + 4; i++) {
+					if (participant[i] != -1) {
+						writen(participant[i], timeout_msg, strlen(timeout_msg));
+					}
+				}
+			}
+			else if (num_ans != 0)
 			{
 				if (readline(participant[ROOM + turn], user_time, MAXLINE) <= 0)
 				{
@@ -667,6 +676,9 @@ kahoot_game(void *vptr)
 			}
 
 			Pthread_mutex_unlock(&(mutex[room_num]));
+
+			// 等待五秒
+			sleep(5);
 		}
 	}
 
