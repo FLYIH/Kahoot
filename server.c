@@ -175,7 +175,7 @@ kahoot_game(void *vptr)
 	const char question_start[200] = "QuestionStart\n";
 	const char timeout_msg[200] = "Timeout\n";
 	char user_time[MAXLINE], mes[MAXLINE];
-	int maxfdp1, people = 0, score[4] = {0}, num_ans, k, turn = 0, answer = 0, quit;
+	int maxfdp1, people = 0, score[4] = {0}, num_ans, answer = 0, quit;
 	double tmp_f;
 
 	struct timeval tv, timeout;
@@ -192,7 +192,6 @@ kahoot_game(void *vptr)
 	{
 	re:
 		answer = 0;
-		turn = 3;
 
 		for (int i = 0; i < 4; i++)
 		{
@@ -360,75 +359,19 @@ kahoot_game(void *vptr)
 				}
 			}
 
-			int pre_turn = turn;
-			maxfdp1 = -1;
-			Pthread_mutex_lock(&(mutex[room_num]));
-			char st[MAXLINE];
-			sprintf(st, "%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
-			int people_flag = 0;
-			printf("%s\n", st);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
-				if (participant[i] == -1)
-				{
-					people_flag = 1;
-				}
 				if (participant[i] != -1)
 				{
-					if (writen(participant[i], st, strlen(st)) <= 0)
-					{
-						participant[i] = -1;
-					}
-				}
-			}
-			if (people_flag == 1)
-			{
-				room_status[room_num] = 0;
-			}
-			else
-			{
-				room_status[room_num] = 1;
-			}
-			for (k = 1; k < 4; k++)
-			{
-				if (participant[ROOM + (pre_turn + k) % 4] != -1)
-				{
-					maxfdp1 = max(maxfdp1, participant[ROOM + ((pre_turn + k) % 4)]);
-
-					if (turn == pre_turn)
-					{
-						turn = (pre_turn + k) % 4;
-					}
+					FD_SET(participant[i], &fd);
 				}
 			}
 
-			if (maxfdp1 == -1)
-			{
-				Pthread_mutex_unlock(&(mutex[room_num]));
-				goto re;
-			}
-
-			for (int i = ROOM; i < ROOM + 4; i++)
-			{
-				if (i - ROOM != turn && participant[i] != -1)
-				{
-					if (writen(participant[i], not_your_turn, strlen(not_your_turn)) <= 0)
-					{
-						participant[i] = -1;
-					}
-				}
-			}
-			FD_ZERO(&fd);
-			FD_SET(participant[turn], &fd);
-			if (writen(participant[ROOM + turn], your_turn, strlen(your_turn)) <= 0)
-			{
-				participant[ROOM + turn] = -1;
-			}
 			num_ans = 0;
-
 			timeout.tv_sec = 10; // 設定答題時間為10秒
 			timeout.tv_usec = 200;
-			num_ans = select(participant[ROOM + turn] + 1, &fd, NULL, NULL, &timeout);
+			num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &timeout);
+
 			if (num_ans == 0) // 如果超時
 			{
 				for (int i = ROOM; i < ROOM + 4; i++) {
@@ -437,36 +380,7 @@ kahoot_game(void *vptr)
 					}
 				}
 			}
-			else if (num_ans != 0)
-			{
-				if (readline(participant[ROOM + turn], user_time, MAXLINE) <= 0)
-				{
-					participant[ROOM + turn] = -1;
-				}
-			}
-
-			maxfdp1 = -1;
-			for (int i = ROOM; i < ROOM + 4; i++)
-			{
-				if (participant[i] != -1)
-				{
-					maxfdp1 = max(maxfdp1, participant[i]);
-				}
-			}
-			FD_ZERO(&fd);
-			for (int i = ROOM; i < ROOM + 4; i++)
-			{
-				if (participant[i] != -1)
-				{
-					FD_SET(participant[i], &fd);
-				}
-			}
-			num_ans = 0;
-			tv.tv_sec = 0;
-			tv.tv_usec = 0;
-			num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &tv);
-
-			if (num_ans != 0)
+			else
 			{
 				double time = 100000;
 				who = -1;
@@ -536,6 +450,7 @@ kahoot_game(void *vptr)
 			}
 			if (flag >= 3)
 			{
+				char st[MAXLINE];
 				sprintf(st, "1\n%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
 				for (int i = ROOM; i < ROOM + 4; i++)
 				{
@@ -559,62 +474,34 @@ kahoot_game(void *vptr)
 				Pthread_mutex_unlock(&(mutex[room_num]));
 				goto re;
 			}
-			else if (win == 1)
+
+			// 保留數據的輸出給客戶端
+			char st[MAXLINE];
+			sprintf(st, "%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
+			int people_flag = 0;
+			printf("%s\n", st);
+			for (int i = ROOM; i < ROOM + 4; i++)
 			{
-				sprintf(st, "2\n%s\n%s %s %s %s %d %d %d %d %d %d %d %d\n", name[who], name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
-				for (int i = ROOM; i < ROOM + 4; i++)
+				if (participant[i] == -1)
 				{
-					if (participant[i] != -1)
+					people_flag = 1;
+				}
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], st, strlen(st)) <= 0)
 					{
-						if (writen(participant[i], st, strlen(st)) <= 0)
-						{
-							;
-						}
-						close(participant[i]);
+						participant[i] = -1;
 					}
 				}
-				for (int i = ROOM; i < ROOM + 4; i++)
-				{
-					participant[i] = -1;
-					id[i] = 0;
-					score[i - ROOM] = 0;
-					sprintf(name[i], "-");
-				}
+			}
+			if (people_flag == 1)
+			{
 				room_status[room_num] = 0;
-				Pthread_mutex_unlock(&(mutex[room_num]));
-				goto re;
 			}
 			else
 			{
-				sprintf(st, "4\n");
-				int flag = 0;
-				for (int i = ROOM; i < ROOM + 4; i++)
-				{
-					if (participant[i] != -1)
-					{
-						if (writen(participant[i], st, strlen(st)) <= 0)
-						{
-							score[i - ROOM] = 0;
-							participant[i] = -1;
-							id[i] = 0;
-							sprintf(name[i], "-");
-						}
-					}
-					else
-					{
-						flag = 1;
-					}
-				}
-				if (flag == 1)
-				{
-					room_status[room_num] = 0;
-				}
+				room_status[room_num] = 1;
 			}
-
-			Pthread_mutex_unlock(&(mutex[room_num]));
-
-			// 等待五秒
-			sleep(5);
 		}
 	}
 
