@@ -1,11 +1,15 @@
 #include <SFML/Graphics.hpp>
 #include "MainMenu.h"
 #include "sfml_gui.h"
+#include "WaitingScreen.h"
+#include "QuizScreen.h"
+#include "RankingScreen.h"
+#include "ResultScreen.h"
 #include "client.h"
 
 int main() {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Kahoot");
-    int state = 0; // 0: 主選單, 1: 遊戲畫面, 2: 上傳畫面
+    int state = 0; // 0: 主選單
     std::string ipAddress; // Store IP address
     int sockfd = -1;       // Socket file descriptor for server connection
 
@@ -23,8 +27,19 @@ int main() {
                 state = 0;
             }
         } else if (state == 2) {
-            std::cout << "Upload screen placeholder\n";
-            state = 0;
+            //std::cout << "waiting\n";
+            run_waiting_screen(window, state, sockfd);
+            //state = 0;
+        } else if (state == 3) {
+            run_quiz_screen(window, state, sockfd);
+            //state = 0;
+        } else if (state == 4) {
+            std::cout << "result\n";
+            test_result_screen(window, state, sockfd);
+        } else if (state == 5) {
+            run_ranking_screen(window, state, sockfd);
+        } else if (state == 6) {
+            std::cout << "upoad question";
         }
     }
 

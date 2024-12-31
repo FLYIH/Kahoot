@@ -25,11 +25,11 @@ make
 
 #### Run the Client
 ```bash
-./client
+./test_client
 ```
 
 #### Run the Client (GUI)
 ```bash
-./sfml_gui
+./client_gui
 ```
 
