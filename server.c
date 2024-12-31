@@ -91,36 +91,12 @@ int main(int argc, char **argv)
 		{
 			continue;
 		}
-		if (room_status[0] == 0)
-		{
-			Pthread_mutex_lock(&(mutex[0]));
-
-			// writen(participant[i], how_many, strlen(how_many));
-			for (int i = ROOM1; i < ROOM1 + 4; i++)
-			{
-				if (participant[i] == -1)
-				{
-					participant[i] = tmp;
-					flag = 1;
-					id[i] = counter;
-					++counter;
-					sprintf(name[i], "%s", str);
-					break;
-				}
-			}
-			Pthread_mutex_unlock(&(mutex[0]));
-		}
-
-		if (flag == 0)
-		{
-			if (room_status[1] == 0)
-			{
-				Pthread_mutex_lock(&(mutex[1]));
-
-				for (int i = ROOM2; i < ROOM2 + 4; i++)
-				{
-					if (participant[i] == -1)
-					{
+		// 檢查所有房間狀態
+		for (int room = 0; room < 4; room++) {
+			if (room_status[room] == 0) {
+				Pthread_mutex_lock(&(mutex[room]));
+				for (int i = sep_room[room]; i < sep_room[room] + 4; i++) {
+					if (participant[i] == -1) {
 						participant[i] = tmp;
 						flag = 1;
 						id[i] = counter;
@@ -129,48 +105,8 @@ int main(int argc, char **argv)
 						break;
 					}
 				}
-				Pthread_mutex_unlock(&(mutex[1]));
-			}
-		}
-		if (flag == 0)
-		{
-			if (room_status[2] == 0)
-			{
-				Pthread_mutex_lock(&(mutex[2]));
-
-				for (int i = ROOM3; i < ROOM3 + 4; i++)
-				{
-					if (participant[i] == -1)
-					{
-						participant[i] = tmp;
-						flag = 1;
-						id[i] = counter;
-						++counter;
-						sprintf(name[i], "%s", str);
-						break;
-					}
-				}
-				Pthread_mutex_unlock(&(mutex[2]));
-			}
-		}
-		if (flag == 0)
-		{
-			if (room_status[3] == 0)
-			{
-				Pthread_mutex_lock(&(mutex[3]));
-				for (int i = ROOM4; i < ROOM4 + 4; i++)
-				{
-					if (participant[i] == -1)
-					{
-						participant[i] = tmp;
-						flag = 1;
-						id[i] = counter;
-						++counter;
-						sprintf(name[i], "%s", str);
-						break;
-					}
-				}
-				Pthread_mutex_unlock(&(mutex[3]));
+				Pthread_mutex_unlock(&(mutex[room]));
+				if (flag == 1) break;
 			}
 		}
 		if (flag == 0)
