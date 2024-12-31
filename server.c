@@ -236,6 +236,7 @@ kahoot_game(void *vptr)
 	const char your_turn[200] = "answer\n";
 	const char not_your_turn[200] = "wait\n";
 	const char game_start[200] = "GameStart\n";
+	const char question_start[200] = "Question\n";
 	char user_time[MAXLINE], mes[MAXLINE];
 	int maxfdp1, people = 0, score[4] = {0}, num_ans, k, turn = 0, answer = 0, quit;
 	double tmp_f;
@@ -386,6 +387,42 @@ kahoot_game(void *vptr)
 			Question *q = &questions[q_index];
 			answer = q->correct_answer;
 
+			// 每題題目開始前倒數三秒
+			for (int i = 3; i > 0; i--) {
+				char countdown[50];
+				sprintf(countdown, "Question starts in %d seconds\n", i);
+				for (int j = ROOM; j < ROOM + 4; j++) {
+					if (participant[j] != -1) {
+						writen(participant[j], countdown, strlen(countdown));
+					}
+				}
+				sleep(1);
+			}
+
+			// 傳送 "Question" 給所有參與者
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1) {
+					writen(participant[i], question_start, strlen(question_start));
+				}
+			}
+
+			// 傳送題目和選項
+			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], mes, strlen(mes)) <= 0)
+					{
+						participant[i] = -1;
+					}
+					else
+					{
+						maxfdp1 = max(maxfdp1, participant[i]);
+					}
+				}
+			}
+
 			int pre_turn = turn;
 			maxfdp1 = -1;
 			Pthread_mutex_lock(&(mutex[room_num]));
@@ -452,7 +489,7 @@ kahoot_game(void *vptr)
 			}
 			num_ans = 0;
 
-			timeout.tv_sec = 3;
+			timeout.tv_sec = 10; // 設定答題時間為10秒
 			timeout.tv_usec = 200;
 			num_ans = select(participant[ROOM + turn] + 1, &fd, NULL, NULL, &timeout);
 			if (num_ans != 0)
@@ -464,19 +501,11 @@ kahoot_game(void *vptr)
 			}
 
 			maxfdp1 = -1;
-			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
 				if (participant[i] != -1)
 				{
-					if (writen(participant[i], mes, strlen(mes)) <= 0)
-					{
-						participant[i] = -1;
-					}
-					else
-					{
-						maxfdp1 = max(maxfdp1, participant[i]);
-					}
+					maxfdp1 = max(maxfdp1, participant[i]);
 				}
 			}
 			FD_ZERO(&fd);
@@ -488,7 +517,6 @@ kahoot_game(void *vptr)
 				}
 			}
 			num_ans = 0;
-			sleep(4);
 			tv.tv_sec = 0;
 			tv.tv_usec = 0;
 			num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &tv);
