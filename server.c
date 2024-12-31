@@ -308,9 +308,21 @@ kahoot_game(void *vptr)
 						{
 							if (people != 4)
 							{
-								char how_many[200];
-								sprintf(how_many, "%d\n", people);
-								if (writen(participant[i], how_many, strlen(how_many)) <= 0)
+								char how_many[MAXLINE] = "";
+								for (int j = ROOM; j < ROOM + 4; j++) {
+									if (participant[j] != -1) {
+										strcat(how_many, name[j]);
+										strcat(how_many, " ");
+									}
+								}
+								char people_count[10];
+								sprintf(people_count, "%d ", people);
+								char message[MAXLINE] = "";
+								strcat(message, people_count);
+								strcat(message, how_many);
+								strcat(message, "\n");
+
+								if (writen(participant[i], message, strlen(message)) <= 0)
 								{
 									participant[i] = -1;
 									people--;
