@@ -400,53 +400,109 @@ kahoot_game(void *vptr)
 				}
 			}
 
-			if (num_ans != 0)
-			{
-				double time = 100000;
-				who = -1;
-				for (int i = ROOM; i < ROOM + 4; i++)
-				{
-					if (participant[i] != -1 && FD_ISSET(participant[i], &fd))
-					{
-						if (readline(participant[i], user_time, MAXLINE) <= 0)
-						{
-							participant[i] = -1;
-						}
-						else
-						{
-							int user_answer;
-							sscanf(user_time, "%d", &user_answer);
-							if (user_answer == answer)
-							{
-								sscanf(user_time, "%lf", &tmp_f);
-								if (tmp_f < time)
-								{
-									time = tmp_f;
-									who = i;
+			// if (num_ans != 0)
+			// {
+			// 	double time = 100000;
+			// 	who = -1;
+			// 	for (int i = ROOM; i < ROOM + 4; i++)
+			// 	{
+			// 		if (participant[i] != -1 && FD_ISSET(participant[i], &fd))
+			// 		{
+			// 			if (readline(participant[i], user_time, MAXLINE) <= 0)
+			// 			{
+			// 				participant[i] = -1;
+			// 			}
+			// 			else
+			// 			{
+			// 				int user_answer;
+			// 				sscanf(user_time, "%d", &user_answer);
+			// 				if (user_answer == answer)
+			// 				{
+			// 					sscanf(user_time, "%lf", &tmp_f);
+			// 					if (tmp_f < time)
+			// 					{
+			// 						time = tmp_f;
+			// 						who = i;
+			// 					}
+			// 				}
+			// 				printf("accept: id:%d time%s", id[i], user_time);
+			// 			}
+			// 		}
+			// 	}
+
+			// 	if (who != -1)
+			// 	{
+			// 		score[who - ROOM] += 2; // two points for the fastest correct answer
+			// 		for (int i = ROOM; i < ROOM + 4; i++)
+			// 		{
+			// 			if (i != who && participant[i] != -1)
+			// 			{
+			// 				int user_answer;
+			// 				sscanf(user_time, "%d", &user_answer);
+			// 				if (user_answer == answer)
+			// 				{
+			// 					score[i - ROOM]++; // one point for correct answer
+			// 				}
+			// 			}
+			// 		}
+			// 	}
+			// }
+
+			if (num_ans != 0) {
+			double fastest_time = 100000.0; // 初始化一個大值，代表最快時間
+			int fastest_index = -1; // 記錄最快答題者的索引
+			int correct_answers[4] = {0, 0, 0, 0}; // 用於記錄每個參與者是否答對
+			double times[4] = {100000.0, 100000.0, 100000.0, 100000.0}; // 記錄每個參與者的時間戳
+
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1 && FD_ISSET(participant[i], &fd)) {
+					char user_time[MAXLINE];
+					if (readline(participant[i], user_time, MAXLINE) > 0) {
+						int user_answer;
+						double user_timestamp;
+						// 從 client 傳來的數據中解析答案和時間戳
+						if (sscanf(user_time, "%d %lf", &user_answer, &user_timestamp) == 2) {
+							// 判斷答案是否合法且正確
+							if (user_answer >= 1 && user_answer <= 4) {
+								if (user_answer == answer) {
+									correct_answers[i - ROOM] = 1; // 標記為答對
+									times[i - ROOM] = user_timestamp; // 記錄時間戳
+									// 判斷是否為最快答題者
+									if (user_timestamp < fastest_time) {
+										fastest_time = user_timestamp;
+										fastest_index = i;
+									}
 								}
 							}
-							printf("accept: id:%d time%s", id[i], user_time);
+						} else {
+							printf("Invalid response from participant %d: %s\n", id[i], user_time);
 						}
-					}
-				}
-
-				if (who != -1)
-				{
-					score[who - ROOM] += 2; // two points for the fastest correct answer
-					for (int i = ROOM; i < ROOM + 4; i++)
-					{
-						if (i != who && participant[i] != -1)
-						{
-							int user_answer;
-							sscanf(user_time, "%d", &user_answer);
-							if (user_answer == answer)
-							{
-								score[i - ROOM]++; // one point for correct answer
-							}
-						}
+					} else {
+						printf("Participant %d disconnected.\n", id[i]);
+						participant[i] = -1; // 連線中斷，移除該參與者
 					}
 				}
 			}
+
+			// 分配分數
+			if (fastest_index != -1) {
+				score[fastest_index - ROOM] += 10; // 最快答對者加10分
+			}
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1 && correct_answers[i - ROOM] == 1 && i != fastest_index) {
+					score[i - ROOM] += 5; // 其他答對者加5分
+				}
+			}
+
+			// Debug 輸出：顯示參與者的答題結果和分數
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1) {
+					printf("Participant %d: Correct=%d, Time=%.2lf, Score=%d\n",
+						id[i], correct_answers[i - ROOM], times[i - ROOM], score[i - ROOM]);
+				}
+			}
+		}
+
 
 			quit = 0;
 			for (int i = ROOM; i < ROOM + 4; i++)
