@@ -81,6 +81,42 @@ int main(int argc, char **argv)
 		readline(tmp, str, sizeof(str));
 
 		str[strlen(str) - 1] = '\0';
+
+
+		if (strcmp(str, "QuestionUpload") == 0) { // 檢查是否為 QuestionUpload 請求
+			printf("Client requested QuestionUpload. Starting upload server...\n");
+
+			// 創建子進程以啟動 uploadserver
+			pid_t pid = fork();
+			if (pid == 0) { // 子進程
+				execl("./uploadserver", "./uploadserver", NULL);
+				perror("exec failed");
+				exit(EXIT_FAILURE);
+			} else if (pid > 0) { // 父進程
+				printf("Upload server started successfully with PID %d\n", pid);
+			} else { // fork 失敗
+				perror("fork failed");
+			}
+
+			// 關閉與該客戶端的連線
+			close(tmp);
+			continue; // 繼續接受其他客戶端
+		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		flag = 0;
 		sprintf(how_many, "%d\n", counter);
 		if (writen(tmp, how_many, strlen(how_many)) <= 0)
@@ -647,7 +683,7 @@ kahoot_game(void *vptr)
 			}
 
 			sleep(1);
-			
+
 			// 傳送 "Info1" 標籤
 			const char info1_tag[200] = "Info1\n";
 			for (int i = ROOM; i < ROOM + 4; i++)
@@ -689,6 +725,23 @@ kahoot_game(void *vptr)
 					}
 				}
 			}
+			
+			sleep(1);
+
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], info_tag, strlen(info_tag)) <= 0)
+					{
+						participant[i] = -1;
+					}
+					else
+					{
+						printf("Sent Info to participant %d\n", i);
+					}
+				}
+			}			
 
 			// 保留數據的輸出給客戶端
 			char st[MAXLINE];
@@ -725,6 +778,23 @@ kahoot_game(void *vptr)
 
 		// 五題結束後傳送 "FinalInfo" 標籤和最終數據
 		const char final_info_tag[200] = "FinalInfo\n";
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] != -1)
+			{
+				if (writen(participant[i], final_info_tag, strlen(final_info_tag)) <= 0)
+				{
+					participant[i] = -1;
+				}
+				else
+				{
+					printf("Sent FinalInfo to participant %d\n", i);
+				}
+			}
+		}
+
+		sleep(1);
+
 		for (int i = ROOM; i < ROOM + 4; i++)
 		{
 			if (participant[i] != -1)
