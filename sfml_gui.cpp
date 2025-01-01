@@ -54,7 +54,7 @@ void run_sfml_gui(sf::RenderWindow& window, int& state, int sockfd) {
                         std::string name = nameInput.toAnsiString();
                         send_name(sockfd, name.c_str());
                         // for test (real : 2)
-                        state = 4;
+                        state = 2;
                         return;
                     }
                 } else if (event.text.unicode < 128) { // Normal characters

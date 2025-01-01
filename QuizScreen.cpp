@@ -68,6 +68,7 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
         optionTexts[i].setFont(font);
         optionTexts[i].setCharacterSize(20);
         optionTexts[i].setFillColor(textColor);
+        optionTexts[i].setPosition(105, 153 + i * 80);
     }
 
     sf::RectangleShape timerBar(sf::Vector2f(600, 20));
@@ -79,60 +80,70 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
     // State variables
     bool answered = false;
     int selectedAnswer = -1;
+    int correctAnswer = -1;
+    bool isCorrect = false;
     char buffer[MAXLINE] = "";
 
-    char recvline[MAXLINE] = "";
-    // Receive and process server message
-        
-    /*while (n = Readline(sockfd, recvline, MAXLINE) > 0) {
-        //strncpy(serverMessage, recvline, sizeof(serverMessage) - 1);
-        recvline[n] = 0;
-        if (strstr(recvline, "Question starts") != NULL) {
-            questionText.setString(recvline); // Show countdown
-        } else if (strcmp(recvline, "QuestionStart\n") == 0) {
-        // Expect question and options in next lines
-            n = Readline(sockfd, recvline, MAXLINE);
-            recvline[n] = 0;
-            questionText.setString(wrapText(recvline, font, 30, 600));
+    fd_set readfds;
+    struct timeval tv;
 
-            for (int i = 0; i < 4; i++) {
-                n = Readline(sockfd, recvline, MAXLINE);
-                recvline[n] = 0;
-                optionTexts[i].setString(wrapText(recvline, font, 20, 280));
-            }
-            break;
-        }
-    } */
-
-    // Main loop
     while (window.isOpen() && state == 3) {
         sf::Event event;
 
-        // 非阻塞接收伺服器資料
-        int n = recv(sockfd, buffer, MAXLINE - 1, MSG_DONTWAIT);
-        if (n > 0) {
-            buffer[n] = '\0'; // 確保字串結尾
+        // 監控套接字是否有數據可讀
+        FD_ZERO(&readfds);
+        FD_SET(sockfd, &readfds);
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000; // 100ms 超時
 
-            if (strcmp(buffer, "timeout\n") == 0) {
-                state = 4; // 切換狀態
-                return;
-            }
-            if (strstr(buffer, "Question starts") != NULL) {
-                questionText.setString(buffer); // 顯示倒數
-            } else if (strcmp(buffer, "QuestionStart\n") == 0) {
-                // 接收題目
-                n = recv(sockfd, buffer, MAXLINE - 1, 0);
-                buffer[n] = '\0';
-                questionText.setString(wrapText(buffer, font, 30, 600));
-
-                for (int i = 0; i < 4; i++) {
-                    n = recv(sockfd, buffer, MAXLINE - 1, 0);
+        int retval = select(sockfd + 1, &readfds, NULL, NULL, &tv);
+        if (retval == -1) {
+            perror("select error");
+            break;
+        } else if (retval > 0) {
+            if (FD_ISSET(sockfd, &readfds)) {
+                memset(buffer, 0, sizeof(buffer));
+                int n = Readline(sockfd, buffer, MAXLINE);
+                if (n > 0) {
                     buffer[n] = '\0';
-                    optionTexts[i].setString(wrapText(buffer, font, 20, 280));
+
+                    if (strcmp(buffer, "Timeout\n") == 0) {
+                        state = 4;
+                        return;
+                    }
+                    if (strstr(buffer, "Question starts") != NULL) {
+                        questionText.setString(buffer);
+                    }
+                    if (strcmp(buffer, "QuestionStart\n") == 0) {
+                        // 接收題目
+                        n = Readline(sockfd, buffer, MAXLINE);
+                        if (n > 0) {
+                            buffer[n] = '\0';
+                            questionText.setString(wrapText(buffer, font, 30, 600));
+                        }
+
+                        // 接收選項
+                        for (int i = 0; i < 4; i++) {
+                            n = Readline(sockfd, buffer, MAXLINE);
+                            if (n > 0) {
+                                buffer[n] = '\0';
+                                optionTexts[i].setString(wrapText(buffer, font, 20, 280));
+                            }
+                        }
+
+                        // 接收正確答案
+                        n = Readline(sockfd, buffer, MAXLINE);
+                        if (n > 0) {
+                            buffer[n] = '\0';
+                            sscanf(buffer, "Answer: %d", &correctAnswer);
+                            correctAnswer -= 1;
+                        }
+                    }
                 }
             }
         }
 
+        // 處理用戶事件
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
@@ -150,23 +161,21 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
                         optionButtons[i].setFillColor(selectedColor);
                         answered = true;
 
-                        // Send answer to server
+                        // 確認答案是否正確
+                        isCorrect = (selectedAnswer == correctAnswer);
+
+                        // 發送答案到伺服器
                         char answerMessage[1024];
-                        snprintf(answerMessage, sizeof(answerMessage), "%s\n", optionTexts[i].getString().toAnsiString().c_str());
+                        snprintf(answerMessage, sizeof(answerMessage), "%d\n", selectedAnswer + 1);
                         send(sockfd, answerMessage, strlen(answerMessage), 0);
-                        std::cout << "Answer: " << optionTexts[i].getString().toAnsiString() << std::endl;
+
+                        // Log correctness
+                        std::cout << "Answer: " << selectedAnswer + 1
+                                  << " (" << (isCorrect ? "Correct" : "Wrong") << ")" << std::endl;
                     }
                 }
             }
         }
-
-        /*if (n = Readline(sockfd, recvline, MAXLINE) > 0) {
-            recvline[n] = 0;
-            if(strcmp(recvline, "info1\n") == 0) {
-                state = 4;
-                return;
-            }
-        } */
 
         // Timer logic
         float elapsedTime = timerClock.getElapsedTime().asSeconds();
@@ -181,7 +190,6 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
                 send(sockfd, timeoutMessage, strlen(timeoutMessage), 0);
                 answered = true;
             }
-            //state = 4;
         }
 
         // Draw UI
