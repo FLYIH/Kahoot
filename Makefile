@@ -3,10 +3,16 @@ include ../Make.defines
 CXX = g++
 CXXFLAGS = -Wall -g
 SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system
-PROGS =	server client_gui test_client
+PROGS =	server client_gui test_client uploadserver uploadclient
 
 all:	${PROGS}
-		
+
+uploadserver:	uploadserver.o
+		${CC} ${CFLAGS} -o $@ uploadserver.o ${LIBS}
+
+uploadclient:	uploadclient.o
+		${CC} -I../lib -g -O2 -D_REENTRANT -Wall -o $@ uploadclient.o ${LIBS} -lncurses
+
 server:	server.o
 		${CC} ${CFLAGS} -o $@ server.o ${LIBS}
 
