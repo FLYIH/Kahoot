@@ -82,8 +82,11 @@ void run_result_screen(sf::RenderWindow& window, int& state, int sockfd, int cor
                     return;
                 }
                 if (strcmp(recvline, "Info1\n") == 0) {
+                    memset(recvline, 0, sizeof(recvline));
+                    Readline(sockfd, recvline, MAXLINE);
                     // 解析數據
-                    sscanf(recvline, "%d %d %d %d", &correctCounts[0], &correctCounts[1], &correctCounts[2], &correctCounts[3]);
+                    int a, b, c, d;
+                    sscanf(recvline, "%d %d %d %d %d %d %d %d", &correctCounts[0], &correctCounts[1], &correctCounts[2], &correctCounts[3], &a, &b, &c, &d);
 
                     for (size_t i = 0; i < 4; ++i) {
                         std::ostringstream oss;
