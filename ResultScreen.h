@@ -5,14 +5,14 @@
 
 // 選項結果資料結構
 struct OptionResult {
-    std::string optionText;
+    char optionText[256];
     int correctCount;
     bool isCorrect;
 };
 
 // 回合結果資料結構
 struct RoundResult {
-    std::vector<OptionResult> options;
+    OptionResult options[4];
     int playerScore;
     bool playerCorrect;
 };
