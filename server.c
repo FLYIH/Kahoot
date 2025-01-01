@@ -537,6 +537,9 @@ kahoot_game(void *vptr)
 			{
 				room_status[room_num] = 1;
 			}
+
+			// 停留五秒再到下一題
+			sleep(5);
 		}
 	}
 
