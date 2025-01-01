@@ -172,6 +172,7 @@ kahoot_game(void *vptr)
 	const char game_start[200] = "GameStart\n";
 	const char question_start[200] = "QuestionStart\n";
 	const char timeout_msg[200] = "Timeout\n";
+	const char game_over[200] = "GameOver\n";
 	char user_time[MAXLINE], mes[MAXLINE];
 	int maxfdp1, people = 0, score[4] = {0}, num_ans, answer = 0, quit;
 	double tmp_f;
@@ -344,7 +345,7 @@ kahoot_game(void *vptr)
 			// 傳送題目、選項和答案
 			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\nAnswer: %d\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3], q->correct_answer);
 			printf("Question: %s\nOption1: %s\nOption2: %s\nOption3: %s\nOption4: %s\n",
-       q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
+       				q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
 
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
@@ -541,7 +542,76 @@ kahoot_game(void *vptr)
 			// 停留五秒再到下一題
 			sleep(5);
 		}
-	}
 
-	return (NULL);
+		// 五題結束後傳送 "FinalInfo" 標籤和最終數據
+		const char final_info_tag[200] = "FinalInfo\n";
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] != -1)
+			{
+				if (writen(participant[i], final_info_tag, strlen(final_info_tag)) <= 0)
+				{
+					participant[i] = -1;
+				}
+				else
+				{
+					printf("Sent FinalInfo to participant %d\n", i);
+				}
+			}
+		}
+
+		// 傳送最終數據
+		char st[MAXLINE];
+		sprintf(st, "%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
+		int people_flag = 0;
+		printf("%s\n", st);
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] == -1)
+			{
+				people_flag = 1;
+			}
+			if (participant[i] != -1)
+			{
+				if (writen(participant[i], st, strlen(st)) <= 0)
+				{
+					participant[i] = -1;
+				}
+			}
+		}
+
+		// 等待10秒後伺服器主動切斷連線
+		sleep(10);
+
+		// 傳送 "GameOver" 標籤
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] != -1)
+			{
+				if (writen(participant[i], game_over, strlen(game_over)) <= 0)
+				{
+					participant[i] = -1;
+				}
+				else
+				{
+					printf("Sent GameOver to participant %d\n", i);
+				}
+			}
+		}
+
+
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] != -1)
+			{
+				close(participant[i]);
+				participant[i] = -1;
+			}
+		}
+
+		room_status[room_num] = 0;
+		Pthread_mutex_unlock(&(mutex[room_num]));
+
+		return (NULL);
+	}
 }
