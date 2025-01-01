@@ -571,7 +571,7 @@ kahoot_game(void *vptr)
 
 			// 超時後，向未回應的參與者發送超時消息
 			for (int i = ROOM; i < ROOM + 4; i++) {
-				if (participant[i] != -1 && !responses[i - ROOM]) {
+				if (participant[i] != -1) {
 					writen(participant[i], timeout_msg, strlen(timeout_msg));
 					printf("Sent Timeout to participant %d\n", id[i]);
 				}
