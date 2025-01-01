@@ -143,6 +143,9 @@ void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
             }
         }
 
+        // add
+
+
         window.clear(backgroundColor);
         window.draw(titleText);
         window.draw(scoreText);

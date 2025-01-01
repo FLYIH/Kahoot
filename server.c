@@ -380,73 +380,222 @@ kahoot_game(void *vptr)
 				}
 			}
 
-			FD_ZERO(&fd);
-			for (int i = ROOM; i < ROOM + 4; i++)
-			{
-				if (participant[i] != -1)
-				{
-					FD_SET(participant[i], &fd);
+			// FD_ZERO(&fd);
+			// for (int i = ROOM; i < ROOM + 4; i++)
+			// {
+			// 	if (participant[i] != -1)
+			// 	{
+			// 		FD_SET(participant[i], &fd);
+			// 	}
+			// }
+
+			// num_ans = 0;
+			// num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &timeout);
+
+			// // 傳送"Timeout"超時消息給所有client
+			// for (int i = ROOM; i < ROOM + 4; i++) {
+			// 	if (participant[i] != -1) {
+			// 		writen(participant[i], timeout_msg, strlen(timeout_msg));
+			// 		printf("Sent Timeout to participant %d\n", i);
+			// 	}
+			// }
+
+			// if (num_ans != 0)
+			// {
+			// 	double time = 100000;
+			// 	who = -1;
+			// 	for (int i = ROOM; i < ROOM + 4; i++)
+			// 	{
+			// 		if (participant[i] != -1 && FD_ISSET(participant[i], &fd))
+			// 		{
+			// 			if (readline(participant[i], user_time, MAXLINE) <= 0)
+			// 			{
+			// 				participant[i] = -1;
+			// 			}
+			// 			else
+			// 			{
+			// 				int user_answer;
+			// 				sscanf(user_time, "%d", &user_answer);
+			// 				if (user_answer == answer)
+			// 				{
+			// 					sscanf(user_time, "%lf", &tmp_f);
+			// 					if (tmp_f < time)
+			// 					{
+			// 						time = tmp_f;
+			// 						who = i;
+			// 					}
+			// 				}
+			// 				printf("accept: id:%d time%s", id[i], user_time);
+			// 			}
+			// 		}
+			// 	}
+
+			// 	if (who != -1)
+			// 	{
+			// 		score[who - ROOM] += 2; // two points for the fastest correct answer
+			// 		for (int i = ROOM; i < ROOM + 4; i++)
+			// 		{
+			// 			if (i != who && participant[i] != -1)
+			// 			{
+			// 				int user_answer;
+			// 				sscanf(user_time, "%d", &user_answer);
+			// 				if (user_answer == answer)
+			// 				{
+			// 					score[i - ROOM]++; // one point for correct answer
+			// 				}
+			// 			}
+			// 		}
+			// 	}
+			// }
+
+			// if (num_ans != 0) {
+			// double fastest_time = 100000.0; // 初始化一個大值，代表最快時間
+			// int fastest_index = -1; // 記錄最快答題者的索引
+			// int correct_answers[4] = {0, 0, 0, 0}; // 用於記錄每個參與者是否答對
+			// double times[4] = {100000.0, 100000.0, 100000.0, 100000.0}; // 記錄每個參與者的時間戳
+
+			// for (int i = ROOM; i < ROOM + 4; i++) {
+			// 	if (participant[i] != -1 && FD_ISSET(participant[i], &fd)) {
+			// 		char user_time[MAXLINE];
+			// 		if (readline(participant[i], user_time, MAXLINE) > 0) {
+			// 			int user_answer;
+			// 			double user_timestamp;
+			// 			// 從 client 傳來的數據中解析答案和時間戳
+			// 			if (sscanf(user_time, "%d %lf", &user_answer, &user_timestamp) == 2) {
+			// 				// 判斷答案是否合法且正確
+			// 				if (user_answer >= 1 && user_answer <= 4) {
+			// 					if (user_answer == answer) {
+			// 						correct_answers[i - ROOM] = 1; // 標記為答對
+			// 						times[i - ROOM] = user_timestamp; // 記錄時間戳
+			// 						// 判斷是否為最快答題者
+			// 						if (user_timestamp < fastest_time) {
+			// 							fastest_time = user_timestamp;
+			// 							fastest_index = i;
+			// 						}
+			// 					}
+			// 				}
+			// 			} else {
+			// 				printf("Invalid response from participant %d: %s\n", id[i], user_time);
+			// 			}
+			// 		} else {
+			// 			printf("Participant %d disconnected.\n", id[i]);
+			// 			participant[i] = -1; // 連線中斷，移除該參與者
+			// 		}
+			// 	}
+			// }
+
+			
+
+			// 	// 分配分數
+			// 	if (fastest_index != -1) {
+			// 		score[fastest_index - ROOM] += 10; // 最快答對者加10分
+			// 	}
+			// 	for (int i = ROOM; i < ROOM + 4; i++) {
+			// 		if (participant[i] != -1 && correct_answers[i - ROOM] == 1 && i != fastest_index) {
+			// 			score[i - ROOM] += 5; // 其他答對者加5分
+			// 		}
+			// 	}
+
+			// 	// Debug 輸出：顯示參與者的答題結果和分數
+			// 	for (int i = ROOM; i < ROOM + 4; i++) {
+			// 		if (participant[i] != -1) {
+			// 			printf("Participant %d: Correct=%d, Time=%.2lf, Score=%d\n",
+			// 				id[i], correct_answers[i - ROOM], times[i - ROOM], score[i - ROOM]);
+			// 		}
+			// 	}
+			// }
+
+			// 初始化回應追蹤變數
+			int responses[4] = {0, 0, 0, 0}; // 記錄每個參與者是否已回應
+			int total_responses = 0;         // 記錄已回應的參與者數量
+			struct timeval timeout = {10, 0}; // 設定 10 秒的超時
+
+			double fastest_time = 100000.0; // 初始化一個大值，代表最快時間
+			int fastest_index = -1;         // 記錄最快答題者的索引
+			int correct_answers[4] = {0, 0, 0, 0}; // 用於記錄每個參與者是否答對
+			double times[4] = {100000.0, 100000.0, 100000.0, 100000.0}; // 記錄每個參與者的時間戳
+
+			while (total_responses < 4) { // 最多等待所有 4 個參與者
+				FD_ZERO(&fd);
+				int maxfdp1 = -1;
+				for (int i = ROOM; i < ROOM + 4; i++) {
+					if (participant[i] != -1 && !responses[i - ROOM]) {
+						FD_SET(participant[i], &fd);
+						maxfdp1 = max(maxfdp1, participant[i]);
+					}
+				}
+
+				if (maxfdp1 == -1) { // 如果沒有有效的參與者，結束等待
+					break;
+				}
+
+				int ready = select(maxfdp1 + 1, &fd, NULL, NULL, &timeout);
+
+				if (ready == 0) { // 超時
+					printf("Timeout occurred, not all participants answered.\n");
+					break;
+				}
+
+				for (int i = ROOM; i < ROOM + 4; i++) {
+					if (participant[i] != -1 && FD_ISSET(participant[i], &fd)) {
+						char user_time[MAXLINE];
+						if (readline(participant[i], user_time, MAXLINE) > 0) {
+							int user_answer;
+							double user_timestamp;
+							if (sscanf(user_time, "%d %lf", &user_answer, &user_timestamp) == 2) {
+								if (user_answer >= 1 && user_answer <= 4) {
+									if (user_answer == answer) {
+										correct_answers[i - ROOM] = 1; // 標記答對
+										times[i - ROOM] = user_timestamp; // 記錄時間戳
+										if (user_timestamp < fastest_time) {
+											fastest_time = user_timestamp;
+											fastest_index = i;
+										}
+									}
+								}
+								printf("Participant %d answered: %d at time %.2lf\n", id[i], user_answer, user_timestamp);
+							} else {
+								printf("Invalid response from participant %d: %s\n", id[i], user_time);
+							}
+							responses[i - ROOM] = 1; // 標記該參與者已回應
+							total_responses++;
+						} else {
+							printf("Participant %d disconnected.\n", id[i]);
+							participant[i] = -1;
+							responses[i - ROOM] = 1; // 標記為已回應，以防止無限等待
+							total_responses++;
+						}
+					}
 				}
 			}
 
-			num_ans = 0;
-			num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &timeout);
+			// 超時後，向未回應的參與者發送超時消息
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1 && !responses[i - ROOM]) {
+					writen(participant[i], timeout_msg, strlen(timeout_msg));
+					printf("Sent Timeout to participant %d\n", id[i]);
+				}
+			}
 
-			// 傳送"Timeout"超時消息給所有client
+			// 分配分數
+			if (fastest_index != -1) {
+				score[fastest_index - ROOM] += 10; // 最快答對者加10分
+			}
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1 && correct_answers[i - ROOM] == 1 && i != fastest_index) {
+					score[i - ROOM] += 5; // 其他答對者加5分
+				}
+			}
+
+			// Debug 輸出：顯示參與者的答題結果和分數
 			for (int i = ROOM; i < ROOM + 4; i++) {
 				if (participant[i] != -1) {
-					writen(participant[i], timeout_msg, strlen(timeout_msg));
-					printf("Sent Timeout to participant %d\n", i);
+					printf("Participant %d: Correct=%d, Time=%.2lf, Score=%d\n",
+						id[i], correct_answers[i - ROOM], times[i - ROOM], score[i - ROOM]);
 				}
 			}
 
-			if (num_ans != 0)
-			{
-				double time = 100000;
-				who = -1;
-				for (int i = ROOM; i < ROOM + 4; i++)
-				{
-					if (participant[i] != -1 && FD_ISSET(participant[i], &fd))
-					{
-						if (readline(participant[i], user_time, MAXLINE) <= 0)
-						{
-							participant[i] = -1;
-						}
-						else
-						{
-							int user_answer;
-							sscanf(user_time, "%d", &user_answer);
-							if (user_answer == answer)
-							{
-								sscanf(user_time, "%lf", &tmp_f);
-								if (tmp_f < time)
-								{
-									time = tmp_f;
-									who = i;
-								}
-							}
-							printf("accept: id:%d time%s", id[i], user_time);
-						}
-					}
-				}
 
-				if (who != -1)
-				{
-					score[who - ROOM] += 2; // two points for the fastest correct answer
-					for (int i = ROOM; i < ROOM + 4; i++)
-					{
-						if (i != who && participant[i] != -1)
-						{
-							int user_answer;
-							sscanf(user_time, "%d", &user_answer);
-							if (user_answer == answer)
-							{
-								score[i - ROOM]++; // one point for correct answer
-							}
-						}
-					}
-				}
-			}
 
 			quit = 0;
 			for (int i = ROOM; i < ROOM + 4; i++)
