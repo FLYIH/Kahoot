@@ -83,37 +83,25 @@ int main(int argc, char **argv)
 		str[strlen(str) - 1] = '\0';
 
 
-		if (strcmp(str, "QuestionUpload") == 0) { // 檢查是否為 QuestionUpload 請求
-			printf("Client requested QuestionUpload. Starting upload server...\n");
+        if (strcmp(str, "UploadClient") == 0) { // 啟動上傳伺服器
+            printf("Client requested QuestionUpload. Starting upload server...\n");
 
-			// 創建子進程以啟動 uploadserver
-			pid_t pid = fork();
-			if (pid == 0) { // 子進程
-				execl("./uploadserver", "./uploadserver", NULL);
-				perror("exec failed");
-				exit(EXIT_FAILURE);
-			} else if (pid > 0) { // 父進程
-				printf("Upload server started successfully with PID %d\n", pid);
-			} else { // fork 失敗
-				perror("fork failed");
-			}
+            pid_t pid = fork();
+            if (pid == 0) { // 子進程
+                execl("./uploadserver", "./uploadserver", NULL);
+                perror("exec failed");
+                exit(EXIT_FAILURE);
+            } else if (pid > 0) { // 父進程
+                printf("Upload server started successfully with PID %d\n", pid);
+            } else { // fork 失敗
+                perror("fork failed");
+                close(tmp);
+                continue;
+            }
 
-			// 關閉與該客戶端的連線
-			close(tmp);
-			continue; // 繼續接受其他客戶端
-		}
-
-
-
-
-
-
-
-
-
-
-
-
+            close(tmp);
+            continue; // 繼續處理其他客戶端
+        }
 
 
 
@@ -682,7 +670,7 @@ kahoot_game(void *vptr)
 				goto re;
 			}
 
-			sleep(1);
+			usleep(300000);
 
 			// 傳送 "Info1" 標籤
 			const char info1_tag[200] = "Info1\n";
@@ -793,7 +781,7 @@ kahoot_game(void *vptr)
 			}
 		}
 
-		sleep(1);
+		usleep(300000);
 
 		for (int i = ROOM; i < ROOM + 4; i++)
 		{
