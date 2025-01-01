@@ -87,7 +87,7 @@ void run_result_screen(sf::RenderWindow& window, int& state, int sockfd, int cor
 
                     for (size_t i = 0; i < 4; ++i) {
                         std::ostringstream oss;
-                        oss << "Option " << (i + 1) << " - Correct: " << correctCounts[i];
+                        oss << (i + 1) << " - Correct: " << correctCounts[i];
                         optionTexts[i].setString(oss.str());
 
                         sf::FloatRect textBounds = optionTexts[i].getLocalBounds();
