@@ -17,7 +17,6 @@ struct RoundResult {
     bool playerCorrect;
 };
 
-void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& roundResult, int sockfd);
-void test_result_screen(sf::RenderWindow& window, int& state, int sockfd);
-
+void run_result_screen(sf::RenderWindow& window, int& state, int sockfd, int correctAnswer, bool isCorrect);
+   
 #endif

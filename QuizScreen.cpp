@@ -43,11 +43,11 @@ char* wrapText(const char* text, sf::Font& font, unsigned int characterSize, flo
     return wrappedText;
 }
 
-void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
+int run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd, bool& correct) {
     sf::Font font;
     if (!font.loadFromFile("arial.ttf")) {
         std::cerr << "Error loading font\n";
-        return;
+        return -1;
     }
 
     // UI elements
@@ -82,7 +82,6 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
     bool answered = false;
     int selectedAnswer = -1;
     int correctAnswer = -1;
-    bool isCorrect = false;
     char buffer[MAXLINE] = "";
 
     // Time recording variables
@@ -100,7 +99,7 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
         FD_ZERO(&readfds);
         FD_SET(sockfd, &readfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 100000; // 100ms timeout
+        tv.tv_usec = 10000; // 100ms timeout
 
         int retval = select(sockfd + 1, &readfds, NULL, NULL, &tv);
         if (retval == -1) {
@@ -115,8 +114,9 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
                     buffer[n] = '\0';
 
                     if (strcmp(buffer, "Timeout\n") == 0) {
-                        state = 5;
-                        return;
+                        std::cout << "Timeout\n";
+                        state = 4;
+                        return correctAnswer;
                     }
 
                     if (strstr(buffer, "Question starts") != NULL) {
@@ -194,7 +194,7 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
                         
 
                         // Verify correctness
-                        isCorrect = (selectedAnswer == correctAnswer);
+                        correct = (selectedAnswer == correctAnswer);
 
                         // Send answer to server
                         char answerMessage[1024];
@@ -203,7 +203,7 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
 
                         // Log correctness
                         std::cout << "Answer: " << selectedAnswer + 1
-                                  << " (" << (isCorrect ? "Correct" : "Wrong") << ")" << std::endl;
+                                  << " (" << (correct ? "Correct" : "Wrong") << ")" << std::endl;
                     }
                 }
             }
@@ -218,9 +218,6 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
             } else {
                 timerBar.setSize(sf::Vector2f(0, 20));
                 if (!answered) {
-                    std::cout << "Time is up!" << std::endl;
-                    const char* timeoutMessage = "Answer: Timeout\n";
-                    send(sockfd, timeoutMessage, strlen(timeoutMessage), 0);
                     answered = true;
                 }
             }
@@ -240,4 +237,5 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
         }
         window.display();
     }
+    return correctAnswer;
 }

@@ -31,11 +31,12 @@ int main() {
             run_waiting_screen(window, state, sockfd);
             //state = 0;
         } else if (state == 3) {
-            run_quiz_screen(window, state, sockfd);
+            bool correct = false;
+            int correctAnswer = run_quiz_screen(window, state, sockfd);
             //state = 0;
         } else if (state == 4) {
             //std::cout << "result\n";
-            test_result_screen(window, state, sockfd);
+            //test_result_screen(window, state, sockfd);
         } else if (state == 5) {
             run_ranking_screen(window, state, sockfd);
         } else if (state == 6) {

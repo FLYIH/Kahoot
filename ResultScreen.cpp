@@ -8,7 +8,7 @@
 
 
 // 顯示結果的頁面
-void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& roundResult, int sockfd) {
+void run_result_screen(sf::RenderWindow& window, int& state, int sockfd, int correctAnswer, bool isCorrect) {
     sf::Font font;
     if (!font.loadFromFile("arial.ttf")) {
         std::cerr << "Error loading font\n";
@@ -25,41 +25,38 @@ void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& 
     titleText.setPosition(300, 20);
 
     // 玩家是否正確的文字
-    std::string correctText = roundResult.playerCorrect ? "You are Correct!" : "You are Wrong!";
-    sf::Text correctStatus(correctText, font, 30);
-    correctStatus.setFillColor(roundResult.playerCorrect ? sf::Color(32, 141, 138) : sf::Color(200, 0, 0));
+    sf::Text correctStatus("", font, 30);
+    correctStatus.setFillColor(isCorrect ? sf::Color(32, 141, 138) : sf::Color(200, 0, 0));
+    correctStatus.setString(isCorrect ? "You are Correct!" : "You are Wrong!");
     correctStatus.setPosition(100, 100);
 
     // 玩家得分文字
-    sf::Text scoreText("You got " + std::to_string(roundResult.playerScore) + " score.", font, 30);
+    int playerScore = isCorrect ? 10 : 0;  // 假設答對得 10 分
+    sf::Text scoreText("You got " + std::to_string(playerScore) + " score.", font, 30);
     scoreText.setFillColor(sf::Color(50, 50, 50));
     scoreText.setPosition(100, 150);
 
     // 選項結果
     sf::Text optionTexts[4];
     sf::RectangleShape optionBoxes[4];
+
     for (size_t i = 0; i < 4; ++i) {
-        // 設定框
         optionBoxes[i].setSize(sf::Vector2f(500, 50));
-        optionBoxes[i].setFillColor(roundResult.options[i].isCorrect ? sf::Color(32, 141, 138) : sf::Color(128, 128, 128, 128));
+        optionBoxes[i].setFillColor(i == correctAnswer ? sf::Color(32, 141, 138) : sf::Color(128, 128, 128, 128));
         optionBoxes[i].setPosition(100, 250 + i * 70);
 
-        // 設定文字
-        std::ostringstream oss;
-        oss << roundResult.options[i].optionText << " - : " << roundResult.options[i].correctCount;
         optionTexts[i].setFont(font);
-        optionTexts[i].setString(oss.str());
         optionTexts[i].setCharacterSize(20);
         optionTexts[i].setFillColor(sf::Color::White);
-
-        sf::FloatRect textBounds = optionTexts[i].getLocalBounds();
-        optionTexts[i].setPosition(
-            optionBoxes[i].getPosition().x + 10,
-            optionBoxes[i].getPosition().y + (50 - textBounds.height) / 2 - textBounds.top
-        );
     }
 
     char recvline[MAXLINE];
+    fd_set readfds;
+    struct timeval tv;
+
+    // 初始化選項結果
+    int correctCounts[4] = {0, 0, 0, 0};
+
     // 繪製迴圈
     while (window.isOpen() && state == 4) {
         sf::Event event;
@@ -67,10 +64,32 @@ void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& 
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
-            // 可在此處添加按鍵或按鈕事件來結束頁面
+        }
+
+        // 使用 select 等待數據
+        FD_ZERO(&readfds);
+        FD_SET(sockfd, &readfds);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 1000; // 1 毫秒
+
+        int retval = select(sockfd + 1, &readfds, NULL, NULL, &tv);
+
+        if (retval > 0 && FD_ISSET(sockfd, &readfds)) {
             if (Readline(sockfd, recvline, MAXLINE) > 0) {
-                if(strcmp(recvline, "info2\n") == 0) {
-                    state = 5;
+                // 解析數據
+                sscanf(recvline, "%d %d %d %d", &correctCounts[0], &correctCounts[1], &correctCounts[2], &correctCounts[3]);
+
+                for (size_t i = 0; i < 4; ++i) {
+                    std::ostringstream oss;
+                    oss << "Option " << (i + 1) << " - Correct: " << correctCounts[i];
+                    optionTexts[i].setString(oss.str());
+
+                    sf::FloatRect textBounds = optionTexts[i].getLocalBounds();
+                    optionTexts[i].setPosition(
+                        optionBoxes[i].getPosition().x + 10,
+                        optionBoxes[i].getPosition().y + (50 - textBounds.height) / 2 - textBounds.top
+                    );
                 }
             }
         }
@@ -88,19 +107,4 @@ void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& 
 
         window.display();
     }
-}
-
-void test_result_screen(sf::RenderWindow& window, int& state,int sockfd) {
-    RoundResult roundResult = {
-        {
-            {"Paris", 15, true},
-            {"London", 5, false},
-            {"Berlin", 2, false},
-            {"Rome", 1, false}
-        },
-        10,
-        false
-    };
-    
-    run_result_screen(window, state, roundResult, sockfd);
 }
