@@ -179,7 +179,7 @@ kahoot_game(void *vptr)
 	struct timeval tv, timeout;
 	tv.tv_sec = 0;
 	tv.tv_usec = 0;
-	timeout.tv_sec = 3;
+	timeout.tv_sec = 10; // 設定答題時間為10秒
 	timeout.tv_usec = 0;
 
 	Question questions[MAX_QUESTIONS];
@@ -308,6 +308,7 @@ kahoot_game(void *vptr)
 		for (int i = ROOM; i < ROOM + 4; i++) {
 			if (participant[i] != -1) {
 				writen(participant[i], game_start, strlen(game_start));
+				printf("Sent GameStart to participant %d\n", i);
 			}
 		}
 
@@ -336,11 +337,15 @@ kahoot_game(void *vptr)
 			for (int i = ROOM; i < ROOM + 4; i++) {
 				if (participant[i] != -1) {
 					writen(participant[i], question_start, strlen(question_start));
+					printf("Sent QuestionStart to participant %d\n", i);
 				}
 			}
 
 			// 傳送題目、選項和答案
 			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\nAnswer: %d\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3], q->correct_answer);
+			printf("Question: %s\nOption1: %s\nOption2: %s\nOption3: %s\nOption4: %s\n",
+       q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
+
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
 				if (participant[i] != -1)
@@ -356,6 +361,23 @@ kahoot_game(void *vptr)
 				}
 			}
 
+			// 傳送 "ClientAnswer" 標籤
+			const char client_answer_tag[200] = "ClientAnswer\n";
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], client_answer_tag, strlen(client_answer_tag)) <= 0)
+					{
+						participant[i] = -1;
+					}
+					else
+					{
+						printf("Sent ClientAnswer to participant %d\n", i);
+					}
+				}
+			}
+
 			FD_ZERO(&fd);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
@@ -366,19 +388,17 @@ kahoot_game(void *vptr)
 			}
 
 			num_ans = 0;
-			timeout.tv_sec = 10; // 設定答題時間為10秒
-			timeout.tv_usec = 200;
 			num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &timeout);
 
-			if (num_ans == 0) // 如果超時
-			{
-				for (int i = ROOM; i < ROOM + 4; i++) {
-					if (participant[i] != -1) {
-						writen(participant[i], timeout_msg, strlen(timeout_msg));
-					}
+			// 傳送"Timeout"超時消息給所有client
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1) {
+					writen(participant[i], timeout_msg, strlen(timeout_msg));
+					printf("Sent Timeout to participant %d\n", i);
 				}
 			}
-			else
+
+			if (num_ans != 0)
 			{
 				double time = 100000;
 				who = -1;
@@ -471,6 +491,23 @@ kahoot_game(void *vptr)
 				room_status[room_num] = 0;
 				Pthread_mutex_unlock(&(mutex[room_num]));
 				goto re;
+			}
+
+			// 傳送 "Info" 標籤
+			const char info_tag[200] = "Info\n";
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], info_tag, strlen(info_tag)) <= 0)
+					{
+						participant[i] = -1;
+					}
+					else
+					{
+						printf("Sent Info to participant %d\n", i);
+					}
+				}
 			}
 
 			// 保留數據的輸出給客戶端
