@@ -646,7 +646,9 @@ kahoot_game(void *vptr)
 				goto re;
 			}
 
-						// 傳送 "Info1" 標籤
+			sleep(1);
+			
+			// 傳送 "Info1" 標籤
 			const char info1_tag[200] = "Info1\n";
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
