@@ -10,8 +10,12 @@ all:	${PROGS}
 uploadserver:	uploadserver.o
 		${CC} ${CFLAGS} -o $@ uploadserver.o ${LIBS}
 
-uploadclient:	uploadclient.o
-		${CC} -I../lib -g -O2 -D_REENTRANT -Wall -o $@ uploadclient.o ${LIBS} -lncurses
+# uploadclient:	uploadclient.o
+# 		${CC} -I../lib -g -O2 -D_REENTRANT -Wall -o $@ uploadclient.o ${LIBS} -lncurses
+
+uploadclient: uploadclient.o
+	g++ -I../lib -g -O2 -D_REENTRANT -Wall -o uploadclient uploadclient.o -I/opt/homebrew/opt/ncurses/include -L/opt/homebrew/opt/ncurses/lib -lncurses
+
 
 server:	server.o
 		${CC} ${CFLAGS} -o $@ server.o ${LIBS}

@@ -108,6 +108,7 @@ void *handle_client(void *arg) {
 }
 
 int main() {
+    printf("Upload Server started\n");
     int server_socket, client_socket;
     struct sockaddr_in server_addr, client_addr;
     socklen_t addr_len = sizeof(client_addr);
