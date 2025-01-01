@@ -1,0 +1,30 @@
+What is the largest continent?
+Africa
+Asia
+Europe
+Antarctica
+2
+Who was the first President of the United States?
+Thomas Jefferson
+Abraham Lincoln
+George Washington
+John Adams
+3
+What is the process by which plants make food?
+Photosynthesis
+Respiration
+Fermentation
+Digestion
+1
+What is the chemical symbol for gold?
+Ag
+Au
+Fe
+Pb
+2
+What is the tallest mountain in the world?
+Mount Everest
+K2
+Kangchenjunga
+Lhotse
+1

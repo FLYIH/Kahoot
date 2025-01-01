@@ -4,12 +4,13 @@
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #define len_name 105
 #define ROOM1 0
 #define ROOM2 4
 #define ROOM3 8
 #define ROOM4 12
-// int a;
+char random_file[256];
 int sep_room[4];
 int room_status[4];
 pthread_mutex_t mutex[4];
@@ -81,29 +82,6 @@ int main(int argc, char **argv)
 		readline(tmp, str, sizeof(str));
 
 		str[strlen(str) - 1] = '\0';
-
-
-        if (strcmp(str, "UploadClient") == 0) { // 啟動上傳伺服器
-            printf("Client requested QuestionUpload. Starting upload server...\n");
-
-            pid_t pid = fork();
-            if (pid == 0) { // 子進程
-                execl("./uploadserver", "./uploadserver", NULL);
-                perror("exec failed");
-                exit(EXIT_FAILURE);
-            } else if (pid > 0) { // 父進程
-                printf("Upload server started successfully with PID %d\n", pid);
-            } else { // fork 失敗
-                perror("fork failed");
-                close(tmp);
-                continue;
-            }
-
-            close(tmp);
-            continue; // 繼續處理其他客戶端
-        }
-
-
 
 		flag = 0;
 		sprintf(how_many, "%d\n", counter);
@@ -210,7 +188,16 @@ kahoot_game(void *vptr)
 
 	Question questions[MAX_QUESTIONS];
 	int num_questions;
-	load_questions("Questions/questions.txt", questions, &num_questions);
+	// // load_questions("Questions/questions.txt", questions, &num_questions);
+	// // 初始化隨機數生成器（程式啟動時執行一次）
+	// srand(time(NULL));
+
+	// // 生成隨機檔案名稱
+	// int random_number = (rand() % 5) + 1; // 隨機數 1~5
+	// snprintf(random_file, sizeof(random_file), "Questions/questions%d.txt", random_number);
+
+	// // 呼叫 load_questions 並使用隨機檔案名稱
+	// load_questions(random_file, questions, &num_questions);
 
 	while (1)
 	{
@@ -329,6 +316,17 @@ kahoot_game(void *vptr)
 			}
 			sleep(1);
 		}
+
+		// load_questions("Questions/questions.txt", questions, &num_questions);
+		// 初始化隨機數生成器（程式啟動時執行一次）
+		srand(time(NULL));
+
+		// 生成隨機檔案名稱
+		int random_number = (rand() % 5) + 1; // 隨機數 1~5
+		snprintf(random_file, sizeof(random_file), "Questions/questions%d.txt", random_number);
+
+		// 呼叫 load_questions 並使用隨機檔案名稱
+		load_questions(random_file, questions, &num_questions);
 
 		// 傳送 "GameStart" 給所有參與者
 		for (int i = ROOM; i < ROOM + 4; i++) {
@@ -670,7 +668,6 @@ kahoot_game(void *vptr)
 				goto re;
 			}
 
-			usleep(300000);
 
 			// 傳送 "Info1" 標籤
 			const char info1_tag[200] = "Info1\n";
@@ -689,10 +686,54 @@ kahoot_game(void *vptr)
 				}
 			}
 
+			usleep(300000);
+
+			// 傳送 "Info1" 標籤
+			// const char info1_tag[200] = "Info1\n";
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], info1_tag, strlen(info1_tag)) <= 0)
+					{
+						participant[i] = -1;
+					}
+					else
+					{
+						printf("Sent Info1 to participant %d\n", i);
+					}
+				}
+			}
+
 			char st1[MAXLINE];
 			char option_stats[MAXLINE];
-			sprintf(st1, "%d %d %d %d %d %d %d %d", option_count[0], option_count[1], option_count[2], option_count[3], correct_answers[0], correct_answers[1], correct_answers[2], correct_answers[3]);
+			sprintf(st1, "%d %d %d %d %d %d %d %d\n", option_count[0], option_count[1], option_count[2], option_count[3], correct_answers[0], correct_answers[1], correct_answers[2], correct_answers[3]);
 			printf("%s\n", st1); 
+			int people_flag = 0;
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] == -1)
+				{
+					people_flag = 1;
+				}
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], st1, strlen(st1)) <= 0)
+					{
+						participant[i] = -1;
+					}
+				}
+			}
+			if (people_flag == 1)
+			{
+				room_status[room_num] = 0;
+			}
+			else
+			{
+				room_status[room_num] = 1;
+			}
+
+
 
 			// 停留五秒再到info
 			sleep(5);
@@ -734,7 +775,7 @@ kahoot_game(void *vptr)
 			// 保留數據的輸出給客戶端
 			char st[MAXLINE];
 			sprintf(st, "%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
-			int people_flag = 0;
+			people_flag = 0;
 			printf("%s\n", st);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
