@@ -143,12 +143,12 @@ void load_questions(const char *filename, Question questions[], int *num_questio
 	*num_questions = 0;
 	while (fgets(line, sizeof(line), file) && *num_questions < MAX_QUESTIONS) {
 		Question *q = &questions[*num_questions];
-		sscanf(line, "%[^\n]", q->question);
+		sscanf(line, " %[^\n]", q->question); // 使用 " %[^\n]" 來處理空格
 		printf("Question: %s\n", q->question); // Debug print
 
 		for (int i = 0; i < MAX_ANSWER_OPTIONS; i++) {
 			fgets(line, sizeof(line), file);
-			sscanf(line, "%[^\n]", q->options[i]);
+			sscanf(line, " %[^\n]", q->options[i]); // 使用 " %[^\n]" 來處理空格
 			printf("Option %d: %s\n", i + 1, q->options[i]); // Debug print
 		}
 
@@ -169,8 +169,6 @@ kahoot_game(void *vptr)
 	const int ROOM = sep_room[room_num];
 
 	fd_set fd;
-	const char your_turn[200] = "answer\n";
-	const char not_your_turn[200] = "wait\n";
 	const char game_start[200] = "GameStart\n";
 	const char question_start[200] = "QuestionStart\n";
 	const char timeout_msg[200] = "Timeout\n";
@@ -315,7 +313,6 @@ kahoot_game(void *vptr)
 
 		for (int q_index = 0; q_index < num_questions; q_index++)
 		{
-			int win = 0;
 			int who = -1;
 
 			quit = 0;
@@ -342,8 +339,8 @@ kahoot_game(void *vptr)
 				}
 			}
 
-			// 傳送題目和選項
-			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
+			// 傳送題目、選項和答案
+			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\nAnswer: %d\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3], q->correct_answer);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
 				if (participant[i] != -1)
@@ -359,6 +356,7 @@ kahoot_game(void *vptr)
 				}
 			}
 
+			FD_ZERO(&fd);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
 				if (participant[i] != -1)
