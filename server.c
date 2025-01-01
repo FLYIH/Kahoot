@@ -91,93 +91,22 @@ int main(int argc, char **argv)
 		{
 			continue;
 		}
-		if (room_status[0] == 0)
-		{
-			Pthread_mutex_lock(&(mutex[0]));
-
-			// writen(participant[i], how_many, strlen(how_many));
-			for (int i = ROOM1; i < ROOM1 + 4; i++)
-			{
-				if (participant[i] == -1)
-				{
-					participant[i] = tmp;
-					flag = 1;
-					id[i] = counter;
-					++counter;
-					// printf("OK\n");
-					sprintf(name[i], "%s", str);
-					// printf("OK\n");
-					// writen(participant[i], how_many, strlen(how_many));
-					// printf("OK\n");
-					break;
-				}
-			}
-			Pthread_mutex_unlock(&(mutex[0]));
-		}
-
-		if (flag == 0)
-		{
-			if (room_status[1] == 0)
-			{
-				Pthread_mutex_lock(&(mutex[1]));
-
-				for (int i = ROOM2; i < ROOM2 + 4; i++)
-				{
-					if (participant[i] == -1)
-					{
+		// 檢查所有房間狀態
+		for (int room = 0; room < 4; room++) {
+			if (room_status[room] == 0) {
+				Pthread_mutex_lock(&(mutex[room]));
+				for (int i = sep_room[room]; i < sep_room[room] + 4; i++) {
+					if (participant[i] == -1) {
 						participant[i] = tmp;
 						flag = 1;
 						id[i] = counter;
 						++counter;
 						sprintf(name[i], "%s", str);
-						// writen(participant[i], how_many, strlen(how_many));
 						break;
 					}
 				}
-				Pthread_mutex_unlock(&(mutex[1]));
-			}
-		}
-		if (flag == 0)
-		{
-			if (room_status[2] == 0)
-			{
-				Pthread_mutex_lock(&(mutex[2]));
-
-				for (int i = ROOM3; i < ROOM3 + 4; i++)
-				{
-					if (participant[i] == -1)
-					{
-						participant[i] = tmp;
-						flag = 1;
-						id[i] = counter;
-						++counter;
-						sprintf(name[i], "%s", str);
-						// writen(participant[i], how_many, strlen(how_many));
-						break;
-					}
-				}
-				Pthread_mutex_unlock(&(mutex[2]));
-			}
-		}
-		if (flag == 0)
-		{
-			if (room_status[3] == 0)
-			{
-				Pthread_mutex_lock(&(mutex[3]));
-				for (int i = ROOM4; i < ROOM4 + 4; i++)
-				{
-					if (participant[i] == -1)
-					{
-						participant[i] = tmp;
-						flag = 1;
-						id[i] = counter;
-						++counter;
-						sprintf(name[i], "%s", str);
-						// writen(participant[i], how_many, strlen(how_many));
-						break;
-					}
-				}
-				Pthread_mutex_unlock(&(mutex[3]));
+				Pthread_mutex_unlock(&(mutex[room]));
+				if (flag == 1) break;
 			}
 		}
 		if (flag == 0)
@@ -214,12 +143,12 @@ void load_questions(const char *filename, Question questions[], int *num_questio
 	*num_questions = 0;
 	while (fgets(line, sizeof(line), file) && *num_questions < MAX_QUESTIONS) {
 		Question *q = &questions[*num_questions];
-		sscanf(line, "%[^\n]", q->question);
+		sscanf(line, " %[^\n]", q->question); // 使用 " %[^\n]" 來處理空格
 		printf("Question: %s\n", q->question); // Debug print
 
 		for (int i = 0; i < MAX_ANSWER_OPTIONS; i++) {
 			fgets(line, sizeof(line), file);
-			sscanf(line, "%[^\n]", q->options[i]);
+			sscanf(line, " %[^\n]", q->options[i]); // 使用 " %[^\n]" 來處理空格
 			printf("Option %d: %s\n", i + 1, q->options[i]); // Debug print
 		}
 
@@ -240,16 +169,18 @@ kahoot_game(void *vptr)
 	const int ROOM = sep_room[room_num];
 
 	fd_set fd;
-	const char your_turn[200] = "answer\n";
-	const char not_your_turn[200] = "wait\n";
+	const char game_start[200] = "GameStart\n";
+	const char question_start[200] = "QuestionStart\n";
+	const char timeout_msg[200] = "Timeout\n";
+	const char game_over[200] = "GameOver\n";
 	char user_time[MAXLINE], mes[MAXLINE];
-	int maxfdp1, people = 0, score[4] = {0}, num_ans, k, turn = 0, answer = 0, quit;
+	int maxfdp1, people = 0, score[4] = {0}, num_ans, answer = 0, quit;
 	double tmp_f;
 
 	struct timeval tv, timeout;
 	tv.tv_sec = 0;
 	tv.tv_usec = 0;
-	timeout.tv_sec = 3;
+	timeout.tv_sec = 10; // 設定答題時間為10秒
 	timeout.tv_usec = 0;
 
 	Question questions[MAX_QUESTIONS];
@@ -260,7 +191,6 @@ kahoot_game(void *vptr)
 	{
 	re:
 		answer = 0;
-		turn = 3;
 
 		for (int i = 0; i < 4; i++)
 		{
@@ -308,9 +238,21 @@ kahoot_game(void *vptr)
 						{
 							if (people != 4)
 							{
-								char how_many[200];
-								sprintf(how_many, "%d\n", people);
-								if (writen(participant[i], how_many, strlen(how_many)) <= 0)
+								char how_many[MAXLINE] = "";
+								for (int j = ROOM; j < ROOM + 4; j++) {
+									if (participant[j] != -1) {
+										strcat(how_many, name[j]);
+										strcat(how_many, " ");
+									}
+								}
+								char people_count[10];
+								sprintf(people_count, "%d ", people);
+								char message[MAXLINE] = "";
+								strcat(message, people_count);
+								strcat(message, how_many);
+								strcat(message, "\n");
+
+								if (writen(participant[i], message, strlen(message)) <= 0)
 								{
 									participant[i] = -1;
 									people--;
@@ -351,9 +293,28 @@ kahoot_game(void *vptr)
 			}
 		}
 
+		// 遊戲開始前倒數五秒
+		for (int i = 5; i > 0; i--) {
+			char countdown[50];
+			sprintf(countdown, "Game starts in %d seconds\n", i);
+			for (int j = ROOM; j < ROOM + 4; j++) {
+				if (participant[j] != -1) {
+					writen(participant[j], countdown, strlen(countdown));
+				}
+			}
+			sleep(1);
+		}
+
+		// 傳送 "GameStart" 給所有參與者
+		for (int i = ROOM; i < ROOM + 4; i++) {
+			if (participant[i] != -1) {
+				writen(participant[i], game_start, strlen(game_start));
+				printf("Sent GameStart to participant %d\n", i);
+			}
+		}
+
 		for (int q_index = 0; q_index < num_questions; q_index++)
 		{
-			int win = 0;
 			int who = -1;
 
 			quit = 0;
@@ -361,85 +322,31 @@ kahoot_game(void *vptr)
 			Question *q = &questions[q_index];
 			answer = q->correct_answer;
 
-			int pre_turn = turn;
-			maxfdp1 = -1;
-			Pthread_mutex_lock(&(mutex[room_num]));
-			char st[MAXLINE];
-			sprintf(st, "%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
-			int people_flag = 0;
-			printf("%s\n", st);
-			for (int i = ROOM; i < ROOM + 4; i++)
-			{
-				if (participant[i] == -1)
-				{
-					people_flag = 1;
-				}
-				if (participant[i] != -1)
-				{
-					if (writen(participant[i], st, strlen(st)) <= 0)
-					{
-						participant[i] = -1;
+			// 每題題目開始前倒數三秒
+			for (int i = 3; i > 0; i--) {
+				char countdown[50];
+				sprintf(countdown, "Question starts in %d seconds\n", i);
+				for (int j = ROOM; j < ROOM + 4; j++) {
+					if (participant[j] != -1) {
+						writen(participant[j], countdown, strlen(countdown));
 					}
 				}
+				sleep(1);
 			}
-			if (people_flag == 1)
-			{
-				room_status[room_num] = 0;
-			}
-			else
-			{
-				room_status[room_num] = 1;
-			}
-			for (k = 1; k < 4; k++)
-			{
-				if (participant[ROOM + (pre_turn + k) % 4] != -1)
-				{
-					maxfdp1 = max(maxfdp1, participant[ROOM + ((pre_turn + k) % 4)]);
 
-					if (turn == pre_turn)
-					{
-						turn = (pre_turn + k) % 4;
-					}
+			// 傳送 "QuestionStart" 給所有參與者
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1) {
+					writen(participant[i], question_start, strlen(question_start));
+					printf("Sent QuestionStart to participant %d\n", i);
 				}
 			}
 
-			if (maxfdp1 == -1)
-			{
-				Pthread_mutex_unlock(&(mutex[room_num]));
-				goto re;
-			}
+			// 傳送題目、選項和答案
+			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\nAnswer: %d\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3], q->correct_answer);
+			printf("Question: %s\nOption1: %s\nOption2: %s\nOption3: %s\nOption4: %s\n",
+       				q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
 
-			for (int i = ROOM; i < ROOM + 4; i++)
-			{
-				if (i - ROOM != turn && participant[i] != -1)
-				{
-					if (writen(participant[i], not_your_turn, strlen(not_your_turn)) <= 0)
-					{
-						participant[i] = -1;
-					}
-				}
-			}
-			FD_ZERO(&fd);
-			FD_SET(participant[turn], &fd);
-			if (writen(participant[ROOM + turn], your_turn, strlen(your_turn)) <= 0)
-			{
-				participant[ROOM + turn] = -1;
-			}
-			num_ans = 0;
-
-			timeout.tv_sec = 3;
-			timeout.tv_usec = 200;
-			num_ans = select(participant[ROOM + turn] + 1, &fd, NULL, NULL, &timeout);
-			if (num_ans != 0)
-			{
-				if (readline(participant[ROOM + turn], user_time, MAXLINE) <= 0)
-				{
-					participant[ROOM + turn] = -1;
-				}
-			}
-
-			maxfdp1 = -1;
-			snprintf(mes, sizeof(mes), "%s\n1. %s\n2. %s\n3. %s\n4. %s\n", q->question, q->options[0], q->options[1], q->options[2], q->options[3]);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
 				if (participant[i] != -1)
@@ -454,6 +361,24 @@ kahoot_game(void *vptr)
 					}
 				}
 			}
+
+			// 傳送 "ClientAnswer" 標籤
+			const char client_answer_tag[200] = "ClientAnswer\n";
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], client_answer_tag, strlen(client_answer_tag)) <= 0)
+					{
+						participant[i] = -1;
+					}
+					else
+					{
+						printf("Sent ClientAnswer to participant %d\n", i);
+					}
+				}
+			}
+
 			FD_ZERO(&fd);
 			for (int i = ROOM; i < ROOM + 4; i++)
 			{
@@ -462,11 +387,17 @@ kahoot_game(void *vptr)
 					FD_SET(participant[i], &fd);
 				}
 			}
+
 			num_ans = 0;
-			sleep(4);
-			tv.tv_sec = 0;
-			tv.tv_usec = 0;
-			num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &tv);
+			num_ans = select(maxfdp1 + 1, &fd, NULL, NULL, &timeout);
+
+			// 傳送"Timeout"超時消息給所有client
+			for (int i = ROOM; i < ROOM + 4; i++) {
+				if (participant[i] != -1) {
+					writen(participant[i], timeout_msg, strlen(timeout_msg));
+					printf("Sent Timeout to participant %d\n", i);
+				}
+			}
 
 			if (num_ans != 0)
 			{
@@ -538,6 +469,7 @@ kahoot_game(void *vptr)
 			}
 			if (flag >= 3)
 			{
+				char st[MAXLINE];
 				sprintf(st, "1\n%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
 				for (int i = ROOM; i < ROOM + 4; i++)
 				{
@@ -561,61 +493,125 @@ kahoot_game(void *vptr)
 				Pthread_mutex_unlock(&(mutex[room_num]));
 				goto re;
 			}
-			else if (win == 1)
+
+			// 傳送 "Info" 標籤
+			const char info_tag[200] = "Info\n";
+			for (int i = ROOM; i < ROOM + 4; i++)
 			{
-				sprintf(st, "2\n%s\n%s %s %s %s %d %d %d %d %d %d %d %d\n", name[who], name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
-				for (int i = ROOM; i < ROOM + 4; i++)
+				if (participant[i] != -1)
 				{
-					if (participant[i] != -1)
+					if (writen(participant[i], info_tag, strlen(info_tag)) <= 0)
 					{
-						if (writen(participant[i], st, strlen(st)) <= 0)
-						{
-							;
-						}
-						close(participant[i]);
-					}
-				}
-				for (int i = ROOM; i < ROOM + 4; i++)
-				{
-					participant[i] = -1;
-					id[i] = 0;
-					score[i - ROOM] = 0;
-					sprintf(name[i], "-");
-				}
-				room_status[room_num] = 0;
-				Pthread_mutex_unlock(&(mutex[room_num]));
-				goto re;
-			}
-			else
-			{
-				sprintf(st, "4\n");
-				int flag = 0;
-				for (int i = ROOM; i < ROOM + 4; i++)
-				{
-					if (participant[i] != -1)
-					{
-						if (writen(participant[i], st, strlen(st)) <= 0)
-						{
-							score[i - ROOM] = 0;
-							participant[i] = -1;
-							id[i] = 0;
-							sprintf(name[i], "-");
-						}
+						participant[i] = -1;
 					}
 					else
 					{
-						flag = 1;
+						printf("Sent Info to participant %d\n", i);
 					}
-				}
-				if (flag == 1)
-				{
-					room_status[room_num] = 0;
 				}
 			}
 
-			Pthread_mutex_unlock(&(mutex[room_num]));
-		}
-	}
+			// 保留數據的輸出給客戶端
+			char st[MAXLINE];
+			sprintf(st, "%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
+			int people_flag = 0;
+			printf("%s\n", st);
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] == -1)
+				{
+					people_flag = 1;
+				}
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], st, strlen(st)) <= 0)
+					{
+						participant[i] = -1;
+					}
+				}
+			}
+			if (people_flag == 1)
+			{
+				room_status[room_num] = 0;
+			}
+			else
+			{
+				room_status[room_num] = 1;
+			}
 
-	return (NULL);
+			// 停留五秒再到下一題
+			sleep(5);
+		}
+
+		// 五題結束後傳送 "FinalInfo" 標籤和最終數據
+		const char final_info_tag[200] = "FinalInfo\n";
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] != -1)
+			{
+				if (writen(participant[i], final_info_tag, strlen(final_info_tag)) <= 0)
+				{
+					participant[i] = -1;
+				}
+				else
+				{
+					printf("Sent FinalInfo to participant %d\n", i);
+				}
+			}
+		}
+
+		// 傳送最終數據
+		char st[MAXLINE];
+		sprintf(st, "%s %s %s %s %d %d %d %d %d %d %d %d\n", name[ROOM], name[ROOM + 1], name[ROOM + 2], name[ROOM + 3], id[ROOM], id[ROOM + 1], id[ROOM + 2], id[ROOM + 3], score[0], score[1], score[2], score[3]);
+		int people_flag = 0;
+		printf("%s\n", st);
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] == -1)
+			{
+				people_flag = 1;
+			}
+			if (participant[i] != -1)
+			{
+				if (writen(participant[i], st, strlen(st)) <= 0)
+				{
+					participant[i] = -1;
+				}
+			}
+		}
+
+		// 等待10秒後伺服器主動切斷連線
+		sleep(10);
+
+		// 傳送 "GameOver" 標籤
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] != -1)
+			{
+				if (writen(participant[i], game_over, strlen(game_over)) <= 0)
+				{
+					participant[i] = -1;
+				}
+				else
+				{
+					printf("Sent GameOver to participant %d\n", i);
+				}
+			}
+		}
+
+
+		for (int i = ROOM; i < ROOM + 4; i++)
+		{
+			if (participant[i] != -1)
+			{
+				close(participant[i]);
+				participant[i] = -1;
+			}
+		}
+
+		room_status[room_num] = 0;
+		Pthread_mutex_unlock(&(mutex[room_num]));
+
+		return (NULL);
+	}
 }
