@@ -1,0 +1,30 @@
+What is the capital of Japan?
+Tokyo
+Kyoto
+Osaka
+Nagoya
+1
+Who painted the Mona Lisa?
+Vincent van Gogh
+Pablo Picasso
+Leonardo da Vinci
+Claude Monet
+3
+What is the smallest prime number?
+0
+1
+2
+3
+3
+What is the largest planet in our solar system?
+Earth
+Mars
+Jupiter
+Saturn
+3
+What is the currency of the United Kingdom?
+Euro
+Pound Sterling
+Dollar
+Yen
+2

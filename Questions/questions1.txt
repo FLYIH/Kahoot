@@ -5,26 +5,26 @@ Paris
 Rome
 3
 Which planet is known as the Red Planet?
-1. Earth
-2. Mars
-3. Jupiter
-4. Venus
+Earth
+Mars
+Jupiter
+Venus
 2
 What is the largest ocean on Earth?
-1. Atlantic Ocean
-2. Indian Ocean
-3. Arctic Ocean
-4. Pacific Ocean
+Atlantic Ocean
+Indian Ocean
+Arctic Ocean
+Pacific Ocean
 4
 Who wrote 'Romeo and Juliet'?
-1. William Shakespeare
-2. Charles Dickens
-3. Mark Twain
-4. J.K. Rowling
+William Shakespeare
+Charles Dickens
+Mark Twain
+J.K. Rowling
 1
 What is the chemical symbol for water?
-1. H2O
-2. CO2
-3. O2
-4. NaCl
+H2O
+CO2
+O2
+NaCl
 1
