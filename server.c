@@ -670,7 +670,7 @@ kahoot_game(void *vptr)
 				goto re;
 			}
 
-			usleep(300000);
+			usleep(10000);
 
 			// 傳送 "Info1" 標籤
 			const char info1_tag[200] = "Info1\n";
@@ -781,7 +781,7 @@ kahoot_game(void *vptr)
 			}
 		}
 
-		usleep(300000);
+		usleep(10000);
 
 		for (int i = ROOM; i < ROOM + 4; i++)
 		{

@@ -40,11 +40,13 @@ int main() {
             run_ranking_screen(window, state, sockfd);
         } else if (state == 6) {
             std::cout << "upoad question";
+            
         }
     }
 
     if (sockfd != -1) {
         close_connection(sockfd);
+        window.close();
     }
 
     return 0;

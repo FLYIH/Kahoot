@@ -10,12 +10,8 @@ all:	${PROGS}
 uploadserver:	uploadserver.o
 		${CC} ${CFLAGS} -o $@ uploadserver.o ${LIBS}
 
-# uploadclient:	uploadclient.o
-# 		${CC} -I../lib -g -O2 -D_REENTRANT -Wall -o $@ uploadclient.o ${LIBS} -lncurses
-
-uploadclient: uploadclient.o
-	g++ -I../lib -g -O2 -D_REENTRANT -Wall -o uploadclient uploadclient.o -I/opt/homebrew/opt/ncurses/include -L/opt/homebrew/opt/ncurses/lib -lncurses
-
+uploadclient:	uploadclient.o
+		${CC} -I../lib -g -O2 -D_REENTRANT -Wall -o $@ uploadclient.o ${LIBS} -lncurses
 
 server:	server.o
 		${CC} ${CFLAGS} -o $@ server.o ${LIBS}
@@ -23,11 +19,14 @@ server:	server.o
 test_client:	test_client.o
 		${CC} ${CFLAGS} -o $@ test_client.o ${LIBS}
 
-client_gui:	client.o sfml_gui.o MainMenu.o WaitingScreen.o QuizScreen.o RankingScreen.o ResultScreen.o main.o
-		${CXX} ${CXXFLAGS} -I../lib -o $@ client.o sfml_gui.o MainMenu.o WaitingScreen.o QuizScreen.o RankingScreen.o ResultScreen.o main.o ${LIBS} ${SFML_LIBS}
+client_gui:	client.o sfml_gui.o MainMenu.o WaitingScreen.o QuizScreen.o RankingScreen.o ResultScreen.o FinalScreen.o main.o
+		${CXX} ${CXXFLAGS} -I../lib -o $@ client.o sfml_gui.o MainMenu.o WaitingScreen.o QuizScreen.o RankingScreen.o ResultScreen.o FinalScreen.o main.o ${LIBS} ${SFML_LIBS}
 
 client.o:	client.c
 		${CC} ${CFLAGS} -c client.c -o client.o
+
+FinalScreen.o:	FinalScreen.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c FinalScreen.cpp -o FinalScreen.o
 
 ResultScreen.o:	ResultScreen.cpp
 		${CXX} ${CXXFLAGS} -I../lib -c ResultScreen.cpp -o ResultScreen.o

@@ -6,8 +6,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/select.h>
-#include <unistd.h>
 #include "client.h"
 
 #define MAX_PLAYERS 4
@@ -23,7 +21,7 @@ int compareScores(const void* a, const void* b) {
     return playerB->score - playerA->score;
 }
 
-void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
+void run_final_screen(sf::RenderWindow& window, int& state, int sockfd) {
     sf::Font font;
     if (!font.loadFromFile("arial.ttf")) {
         std::cerr << "Error loading font\n";
@@ -119,11 +117,13 @@ void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
             char recvline[MAXLINE];
             if (Readline(sockfd, recvline, MAXLINE) > 0) {
                 // std::cout << "read score\n";
-                if (strstr(recvline, "Question starts") != NULL) {
-                    state = 3;
-                    return;
+                if (strstr(recvline, "GameOver\n") != NULL) {
+                    // close window
+                    window.close();
+                    state = 0; // 設定 state 為 0，表示遊戲結束
+                    return; // 離開 function
                 }
-                if (strcmp(recvline, "Info\n") == 0) {
+                if (strcmp(recvline, "FinalInfo\n") == 0) {
                     char names[MAX_PLAYERS][50];
                     int scores[MAX_PLAYERS];
                     Readline(sockfd, recvline, MAXLINE);

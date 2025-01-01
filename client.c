@@ -24,17 +24,6 @@ void send_name(int sockfd, const char *name) {
     // 格式化消息
     snprintf(sendline, sizeof(sendline), "%s\n", name);
     Writen(sockfd, sendline, strlen(sendline));
-
-    /*while (Readline(sockfd, recvline, MAXLINE) > 0) {
-        Fputs(recvline, stdout);
-        if (strncmp(recvline, "answer", 6) == 0) {
-            printf("Enter your answer: ");
-            if (Fgets(sendline, MAXLINE, stdin) != NULL) {
-                Writen(sockfd, sendline, strlen(sendline));
-            }
-        }
-    }*/
-
 }
 
 void readID(int sockfd) {
