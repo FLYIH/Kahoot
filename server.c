@@ -102,6 +102,7 @@ int main(int argc, char **argv)
 						id[i] = counter;
 						++counter;
 						sprintf(name[i], "%s", str);
+						printf("accepting new client %s to room %d\n", str, room);
 						break;
 					}
 				}
@@ -599,19 +600,28 @@ kahoot_game(void *vptr)
 			}
 		}
 
-
-		for (int i = ROOM; i < ROOM + 4; i++)
-		{
-			if (participant[i] != -1)
-			{
-				close(participant[i]);
-				participant[i] = -1;
+		// 清除房間的所有相關狀態
+		for (int i = ROOM; i < ROOM + 4; i++) {
+			if (participant[i] != -1) {
+				close(participant[i]); // 關閉連線
+				participant[i] = -1;  // 清除參與者記錄
 			}
+			id[i] = 0;               // 清除參與者 ID
+			sprintf(name[i], "-");   // 清除參與者名稱
+			// 如果有額外的狀態數據，這裡也需要清理
+		}
+		room_status[room_num] = 0;   // 重置房間狀態為可用
+		Pthread_mutex_unlock(&(mutex[room_num])); // 解鎖 mutex，允許其他程式碼使用房間
+
+		printf("Room %d cleared. Status: %d\n", room_num, room_status[room_num]);
+		for (int i = ROOM; i < ROOM + 4; i++) {
+			printf("Participant[%d]: %d, ID: %d, Name: %s\n", i, participant[i], id[i], name[i]);
 		}
 
-		room_status[room_num] = 0;
-		Pthread_mutex_unlock(&(mutex[room_num]));
 
-		return (NULL);
+		// 終止該遊戲的 thread
+		
+
 	}
+	pthread_exit(NULL);
 }
