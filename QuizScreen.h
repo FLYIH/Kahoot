@@ -4,6 +4,6 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 
-void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd, bool& correct);
+int run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd, bool& correct);
 
 #endif

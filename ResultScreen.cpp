@@ -77,19 +77,25 @@ void run_result_screen(sf::RenderWindow& window, int& state, int sockfd, int cor
 
         if (retval > 0 && FD_ISSET(sockfd, &readfds)) {
             if (Readline(sockfd, recvline, MAXLINE) > 0) {
-                // 解析數據
-                sscanf(recvline, "%d %d %d %d", &correctCounts[0], &correctCounts[1], &correctCounts[2], &correctCounts[3]);
+                if (strcmp(recvline, "Info\n") == 0) {
+                    state = 5;
+                    return;
+                }
+                if (strcmp(recvline, "Info1\n") == 0) {
+                    // 解析數據
+                    sscanf(recvline, "%d %d %d %d", &correctCounts[0], &correctCounts[1], &correctCounts[2], &correctCounts[3]);
 
-                for (size_t i = 0; i < 4; ++i) {
-                    std::ostringstream oss;
-                    oss << "Option " << (i + 1) << " - Correct: " << correctCounts[i];
-                    optionTexts[i].setString(oss.str());
+                    for (size_t i = 0; i < 4; ++i) {
+                        std::ostringstream oss;
+                        oss << "Option " << (i + 1) << " - Correct: " << correctCounts[i];
+                        optionTexts[i].setString(oss.str());
 
-                    sf::FloatRect textBounds = optionTexts[i].getLocalBounds();
-                    optionTexts[i].setPosition(
-                        optionBoxes[i].getPosition().x + 10,
-                        optionBoxes[i].getPosition().y + (50 - textBounds.height) / 2 - textBounds.top
-                    );
+                        sf::FloatRect textBounds = optionTexts[i].getLocalBounds();
+                        optionTexts[i].setPosition(
+                            optionBoxes[i].getPosition().x + 10,
+                            optionBoxes[i].getPosition().y + (50 - textBounds.height) / 2 - textBounds.top
+                        );
+                    }
                 }
             }
         }

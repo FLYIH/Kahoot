@@ -12,7 +12,8 @@ int main() {
     int state = 0; // 0: 主選單
     std::string ipAddress; // Store IP address
     int sockfd = -1;       // Socket file descriptor for server connection
-
+    int correctAnswer = 0;
+    bool correct = false;
     MainMenu mainMenu;
 
     while (window.isOpen()) {
@@ -31,12 +32,10 @@ int main() {
             run_waiting_screen(window, state, sockfd);
             //state = 0;
         } else if (state == 3) {
-            bool correct = false;
-            int correctAnswer = run_quiz_screen(window, state, sockfd);
-            //state = 0;
+            correct = false;
+            correctAnswer = run_quiz_screen(window, state, sockfd, correct);
         } else if (state == 4) {
-            //std::cout << "result\n";
-            //test_result_screen(window, state, sockfd);
+            run_result_screen(window, state, sockfd, correctAnswer, correct);
         } else if (state == 5) {
             run_ranking_screen(window, state, sockfd);
         } else if (state == 6) {
