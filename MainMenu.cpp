@@ -80,8 +80,9 @@ void MainMenu::handleEvents(sf::RenderWindow& window, int& state, std::string& i
             } else if (event.text.unicode < 128) { // Normal characters
                 ipInput += static_cast<char>(event.text.unicode);
             }
+            
         }
-
+        ipInput = "127.0.0.1";
         if (event.type == sf::Event::MouseButtonPressed) {
             if (event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);

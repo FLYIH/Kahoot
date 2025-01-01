@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <cstring>
+#include <sys/time.h>
 #include "client.h"
 
 char* wrapText(const char* text, sf::Font& font, unsigned int characterSize, float maxWidth) {
@@ -84,17 +85,22 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
     bool isCorrect = false;
     char buffer[MAXLINE] = "";
 
+    // Time recording variables
+    struct timeval startTime, endTime;
+    bool questionReceived = false;
+    bool gameStartReceived = false;
+
     fd_set readfds;
     struct timeval tv;
 
     while (window.isOpen() && state == 3) {
         sf::Event event;
 
-        // 監控套接字是否有數據可讀
+        // Monitor socket for data
         FD_ZERO(&readfds);
         FD_SET(sockfd, &readfds);
         tv.tv_sec = 0;
-        tv.tv_usec = 100000; // 100ms 超時
+        tv.tv_usec = 100000; // 100ms timeout
 
         int retval = select(sockfd + 1, &readfds, NULL, NULL, &tv);
         if (retval == -1) {
@@ -104,25 +110,34 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
             if (FD_ISSET(sockfd, &readfds)) {
                 memset(buffer, 0, sizeof(buffer));
                 int n = Readline(sockfd, buffer, MAXLINE);
+                //printf("bu : %s", buffer);
                 if (n > 0) {
                     buffer[n] = '\0';
 
                     if (strcmp(buffer, "Timeout\n") == 0) {
-                        state = 4;
+                        state = 5;
                         return;
                     }
+
                     if (strstr(buffer, "Question starts") != NULL) {
+                        //printf("hi we are in\n");
                         questionText.setString(buffer);
+                        gameStartReceived = true;
                     }
+
                     if (strcmp(buffer, "QuestionStart\n") == 0) {
-                        // 接收題目
+                        // Record the start time
+                        gettimeofday(&startTime, NULL);
+                        questionReceived = true;
+
+                        // Receive question
                         n = Readline(sockfd, buffer, MAXLINE);
                         if (n > 0) {
                             buffer[n] = '\0';
                             questionText.setString(wrapText(buffer, font, 30, 600));
                         }
 
-                        // 接收選項
+                        // Receive options
                         for (int i = 0; i < 4; i++) {
                             n = Readline(sockfd, buffer, MAXLINE);
                             if (n > 0) {
@@ -131,7 +146,7 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
                             }
                         }
 
-                        // 接收正確答案
+                        // Receive correct answer
                         n = Readline(sockfd, buffer, MAXLINE);
                         if (n > 0) {
                             buffer[n] = '\0';
@@ -143,7 +158,7 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
             }
         }
 
-        // 處理用戶事件
+        // Handle user events
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
@@ -161,12 +176,29 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
                         optionButtons[i].setFillColor(selectedColor);
                         answered = true;
 
-                        // 確認答案是否正確
+                        // Record the end time and calculate the time difference
+                        
+                        gettimeofday(&endTime, NULL);
+                        long seconds = endTime.tv_sec - startTime.tv_sec;
+                        long microseconds = endTime.tv_usec - startTime.tv_usec;
+                        if (microseconds < 0) {
+                            seconds -= 1;
+                            microseconds += 1000000;
+                        }
+                        printf("Time taken to answer: %ld seconds and %ld microseconds\n", seconds, microseconds);
+
+                        // Optionally send time to server
+                        //char timeMessage[1024];
+                        //snprintf(timeMessage, sizeof(timeMessage), "Time: %ld.%06ld seconds\n", seconds, microseconds);
+                        //send(sockfd, timeMessage, strlen(timeMessage), 0);
+                        
+
+                        // Verify correctness
                         isCorrect = (selectedAnswer == correctAnswer);
 
-                        // 發送答案到伺服器
+                        // Send answer to server
                         char answerMessage[1024];
-                        snprintf(answerMessage, sizeof(answerMessage), "%d\n", selectedAnswer + 1);
+                        snprintf(answerMessage, sizeof(answerMessage), "%d %ld.%06ld\n", selectedAnswer + 1, seconds, microseconds);
                         send(sockfd, answerMessage, strlen(answerMessage), 0);
 
                         // Log correctness
@@ -178,28 +210,34 @@ void run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd) {
         }
 
         // Timer logic
-        float elapsedTime = timerClock.getElapsedTime().asSeconds();
-        float timeRemaining = timeLimit - elapsedTime;
-        if (timeRemaining > 0) {
-            timerBar.setSize(sf::Vector2f(600 * (timeRemaining / timeLimit), 20));
-        } else {
-            timerBar.setSize(sf::Vector2f(0, 20));
-            if (!answered) {
-                std::cout << "Time is up!" << std::endl;
-                const char* timeoutMessage = "Answer: Timeout\n";
-                send(sockfd, timeoutMessage, strlen(timeoutMessage), 0);
-                answered = true;
+        if (questionReceived) {
+            float elapsedTime = timerClock.getElapsedTime().asSeconds();
+            float timeRemaining = timeLimit - elapsedTime;
+            if (timeRemaining > 0) {
+                timerBar.setSize(sf::Vector2f(600 * (timeRemaining / timeLimit), 20));
+            } else {
+                timerBar.setSize(sf::Vector2f(0, 20));
+                if (!answered) {
+                    std::cout << "Time is up!" << std::endl;
+                    const char* timeoutMessage = "Answer: Timeout\n";
+                    send(sockfd, timeoutMessage, strlen(timeoutMessage), 0);
+                    answered = true;
+                }
             }
         }
 
         // Draw UI
         window.clear(sf::Color::White);
-        window.draw(questionText);
-        for (int i = 0; i < 4; i++) {
-            window.draw(optionButtons[i]);
-            window.draw(optionTexts[i]);
+        if (questionReceived) {
+            window.draw(questionText);
+            for (int i = 0; i < 4; i++) {
+                window.draw(optionButtons[i]);
+                window.draw(optionTexts[i]);
+            }
+            window.draw(timerBar);
+        } else if (gameStartReceived) {
+            window.draw(questionText);
         }
-        window.draw(timerBar);
         window.display();
     }
 }
