@@ -34,7 +34,7 @@ int main() {
             run_quiz_screen(window, state, sockfd);
             //state = 0;
         } else if (state == 4) {
-            std::cout << "result\n";
+            //std::cout << "result\n";
             test_result_screen(window, state, sockfd);
         } else if (state == 5) {
             run_ranking_screen(window, state, sockfd);

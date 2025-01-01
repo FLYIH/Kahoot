@@ -38,7 +38,7 @@ void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& 
     // 選項結果
     sf::Text optionTexts[4];
     sf::RectangleShape optionBoxes[4];
-    for (size_t i = 0; i < roundResult.options.size(); ++i) {
+    for (size_t i = 0; i < 4; ++i) {
         // 設定框
         optionBoxes[i].setSize(sf::Vector2f(500, 50));
         optionBoxes[i].setFillColor(roundResult.options[i].isCorrect ? sf::Color(32, 141, 138) : sf::Color(128, 128, 128, 128));
@@ -69,7 +69,7 @@ void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& 
             }
             // 可在此處添加按鍵或按鈕事件來結束頁面
             if (Readline(sockfd, recvline, MAXLINE) > 0) {
-                if(strcmp(recvline, "ranking\n") == 0) {
+                if(strcmp(recvline, "info2\n") == 0) {
                     state = 5;
                 }
             }
@@ -81,7 +81,7 @@ void run_result_screen(sf::RenderWindow& window, int& state, const RoundResult& 
         window.draw(correctStatus);
         window.draw(scoreText);
 
-        for (size_t i = 0; i < roundResult.options.size(); ++i) {
+        for (size_t i = 0; i < 4; ++i) {
             window.draw(optionBoxes[i]);
             window.draw(optionTexts[i]);
         }
