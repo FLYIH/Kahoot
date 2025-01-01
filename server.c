@@ -509,6 +509,7 @@ kahoot_game(void *vptr)
 			int responses[4] = {0, 0, 0, 0}; // 記錄每個參與者是否已回應
 			int total_responses = 0;         // 記錄已回應的參與者數量
 			struct timeval timeout = {10, 0}; // 設定 10 秒的超時
+			int option_count[4] = {0, 0, 0, 0}; // 分別記錄選項 1, 2, 3, 4 的答題人數
 
 			double fastest_time = 100000.0; // 初始化一個大值，代表最快時間
 			int fastest_index = -1;         // 記錄最快答題者的索引
@@ -544,6 +545,7 @@ kahoot_game(void *vptr)
 							double user_timestamp;
 							if (sscanf(user_time, "%d %lf", &user_answer, &user_timestamp) == 2) {
 								if (user_answer >= 1 && user_answer <= 4) {
+									option_count[user_answer - 1]++; // 選項的索引從 0 開始
 									if (user_answer == answer) {
 										correct_answers[i - ROOM] = 1; // 標記答對
 										times[i - ROOM] = user_timestamp; // 記錄時間戳
@@ -644,6 +646,31 @@ kahoot_game(void *vptr)
 				goto re;
 			}
 
+						// 傳送 "Info1" 標籤
+			const char info1_tag[200] = "Info1\n";
+			for (int i = ROOM; i < ROOM + 4; i++)
+			{
+				if (participant[i] != -1)
+				{
+					if (writen(participant[i], info1_tag, strlen(info1_tag)) <= 0)
+					{
+						participant[i] = -1;
+					}
+					else
+					{
+						printf("Sent Info1 to participant %d\n", i);
+					}
+				}
+			}
+
+			char st1[MAXLINE];
+			char option_stats[MAXLINE];
+			sprintf(st1, "%d %d %d %d %d %d %d %d", option_count[0], option_count[1], option_count[2], option_count[3], correct_answers[0], correct_answers[1], correct_answers[2], correct_answers[3]);
+			printf("%s\n", st1); 
+
+			// 停留五秒再到info
+			sleep(5);
+
 			// 傳送 "Info" 標籤
 			const char info_tag[200] = "Info\n";
 			for (int i = ROOM; i < ROOM + 4; i++)
@@ -691,6 +718,7 @@ kahoot_game(void *vptr)
 
 			// 停留五秒再到下一題
 			sleep(5);
+
 		}
 
 		// 五題結束後傳送 "FinalInfo" 標籤和最終數據
