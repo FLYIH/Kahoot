@@ -4,127 +4,221 @@
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <arpa/inet.h> // 網路字節序相關函數
+#ifdef __linux__
+#include <endian.h>    // be64toh and htobe64 在 Linux 中的定義
+#elif defined(__APPLE__)
+#include <libkern/OSByteOrder.h>
+#define htobe64(x) OSSwapHostToBigInt64(x)
+#define be64toh(x) OSSwapBigToHostInt64(x)
+#else
+#error "Platform not supported"
+#endif
+
 #define len_name 105
 #define ROOM1 0
 #define ROOM2 4
 #define ROOM3 8
 #define ROOM4 12
+#define QUESTIONS_DIR "Questions"
+#define BUFFER_SIZE 4096
+
 char random_file[256];
 int sep_room[4];
 int room_status[4];
 pthread_mutex_t mutex[4];
-
-const char kick[200] = "You won\n";
 int participant[16];
 int id[16];
 char name[16][len_name];
 void *kahoot_game(void *);
-const char start[200] = "start\n";
-const char no_one[200] = "no\n";
-const char nobody[200] = "empty\n";
-int main(int argc, char **argv)
-{
-	for (int i = 0; i < 4; i++)
-	{
-		sep_room[i] = i * 4;
-		for (int i = 0; i < 4; i++)
-		{
-			sep_room[i] = i * 4;
-			pthread_mutex_init(&mutex[i], NULL);
-		}
-		room_status[i] = 0;
-	}
-	signal(SIGPIPE, SIG_IGN);
 
-	int counter = 1; /* incremented by threads */
-	srand(time(NULL));
-	int listenfd, tmp, flag;
-	char str[MAXLINE];
-	const char waiting[200] = "waiting\n";
-	socklen_t clilen;
-	struct sockaddr_in cliaddr, servaddr;
+void handle_upload(int client_fd);
 
-	listenfd = Socket(AF_INET, SOCK_STREAM, 0);
+int main(int argc, char **argv) {
+    for (int i = 0; i < 4; i++) {
+        sep_room[i] = i * 4;
+        for (int i = 0; i < 4; i++) {
+            sep_room[i] = i * 4;
+            pthread_mutex_init(&mutex[i], NULL);
+        }
+        room_status[i] = 0;
+    }
+    signal(SIGPIPE, SIG_IGN);
 
-	bzero(&servaddr, sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	servaddr.sin_port = htons(SERV_PORT);
+    int counter = 1; /* incremented by threads */
+    srand(time(NULL));
+    int listenfd, tmp, flag;
+    char str[MAXLINE];
+    const char waiting[200] = "waiting\n";
+    socklen_t clilen;
+    struct sockaddr_in cliaddr, servaddr;
 
-	Bind(listenfd, (SA *)&servaddr, sizeof(servaddr));
+    listenfd = Socket(AF_INET, SOCK_STREAM, 0);
 
-	Listen(listenfd, LISTENQ);
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(SERV_PORT);
 
-	pthread_t tid[4];
-	char how_many[MAXLINE] = "";
-	for (int i = 0; i < 16; i++)
-	{
-		participant[i] = -1;
-	}
-	for (int i = 0; i < 4; i++)
-	{
-		int ttt = i;
-		Pthread_create(&(tid[i]), NULL, &kahoot_game, (void *)(long)(ttt));
-	}
+    Bind(listenfd, (SA *)&servaddr, sizeof(servaddr));
 
-	sleep(1);
-	// Pthread_create(&tidB, NULL, &doit, NULL);
-	for (;;)
-	{
-		// printf("OK\n");
+    Listen(listenfd, LISTENQ);
 
-		clilen = sizeof(cliaddr);
-		tmp = Accept(listenfd, (SA *)&cliaddr, &clilen);
-		// sprintf(name[i], "%s", str);
-		printf("accepting new client\n");
+    pthread_t tid[4];
+    char how_many[MAXLINE] = "";
+    for (int i = 0; i < 16; i++) {
+        participant[i] = -1;
+    }
+    for (int i = 0; i < 4; i++) {
+        int ttt = i;
+        Pthread_create(&(tid[i]), NULL, &kahoot_game, (void *)(long)(ttt));
+    }
 
-		readline(tmp, str, sizeof(str));
+    sleep(1);
 
-		str[strlen(str) - 1] = '\0';
+    for (;;) {
+        clilen = sizeof(cliaddr);
+        tmp = Accept(listenfd, (SA *)&cliaddr, &clilen);
+        printf("accepting new client\n");
 
-		flag = 0;
-		sprintf(how_many, "%d\n", counter);
-		if (writen(tmp, how_many, strlen(how_many)) <= 0)
-		{
-			continue;
-		}
-		if (writen(tmp, waiting, strlen(waiting)) <= 0)
-		{
-			continue;
-		}
-		// 檢查所有房間狀態
-		for (int room = 0; room < 4; room++) {
-			if (room_status[room] == 0) {
-				Pthread_mutex_lock(&(mutex[room]));
-				for (int i = sep_room[room]; i < sep_room[room] + 4; i++) {
-					if (participant[i] == -1) {
-						participant[i] = tmp;
-						flag = 1;
-						id[i] = counter;
-						++counter;
-						sprintf(name[i], "%s", str);
-						printf("accepting new client %s to room %d\n", str, room);
-						break;
-					}
-				}
-				Pthread_mutex_unlock(&(mutex[room]));
-				if (flag == 1) break;
-			}
-		}
-		if (flag == 0)
-		{
-			sprintf(how_many, "sorry\n");
-			printf("sorry\n");
-			if (writen(tmp, how_many, strlen(how_many)) <= 0)
-			{
-				continue;
-			}
-			close(tmp);
-		}
-	}
-	// printf("OK\n");
+        readline(tmp, str, sizeof(str));
+        str[strlen(str) - 1] = '\0';
+
+        if (strcmp(str, "UploadClient") == 0) {
+            printf("UploadClient detected. Handling upload...\n");
+            handle_upload(tmp);
+            close(tmp);
+            continue; // 繼續接受下一個連線
+        }
+
+        flag = 0;
+        sprintf(how_many, "%d\n", counter);
+        if (writen(tmp, how_many, strlen(how_many)) <= 0) {
+            continue;
+        }
+        if (writen(tmp, waiting, strlen(waiting)) <= 0) {
+            continue;
+        }
+
+        // 檢查所有房間狀態
+        for (int room = 0; room < 4; room++) {
+            if (room_status[room] == 0) {
+                Pthread_mutex_lock(&(mutex[room]));
+                for (int i = sep_room[room]; i < sep_room[room] + 4; i++) {
+                    if (participant[i] == -1) {
+                        participant[i] = tmp;
+                        flag = 1;
+                        id[i] = counter;
+                        ++counter;
+                        sprintf(name[i], "%s", str);
+                        printf("accepting new client %s to room %d\n", str, room);
+                        break;
+                    }
+                }
+                Pthread_mutex_unlock(&(mutex[room]));
+                if (flag == 1) break;
+            }
+        }
+        if (flag == 0) {
+            sprintf(how_many, "sorry\n");
+            printf("sorry\n");
+            if (writen(tmp, how_many, strlen(how_many)) <= 0) {
+                continue;
+            }
+            close(tmp);
+        }
+    }
 }
+
+// 處理檔案上傳的函數
+void handle_upload(int client_fd) {
+    char buffer[BUFFER_SIZE];
+    char file_name[BUFFER_SIZE];
+    int64_t file_size;
+
+    // 接收檔案名稱
+    if (recv(client_fd, file_name, sizeof(file_name) - 1, 0) <= 0) {
+        perror("Failed to receive file name");
+        return;
+    }
+    file_name[strcspn(file_name, "\r\n")] = '\0'; // 移除換行符號
+
+    // 確定新檔案名稱
+    int max_index = 5;
+    DIR *dir = opendir(QUESTIONS_DIR);
+    if (dir) {
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL) {
+            if (strncmp(entry->d_name, "questions", 9) == 0) {
+                int index;
+                if (sscanf(entry->d_name, "questions%d.txt", &index) == 1) {
+                    if (index > max_index) {
+                        max_index = index;
+                    }
+                }
+            }
+        }
+        closedir(dir);
+    }
+    max_index++;
+    char save_path[BUFFER_SIZE];
+    snprintf(save_path, sizeof(save_path), "%s/questions%d.txt", QUESTIONS_DIR, max_index);
+
+    // 接收檔案大小
+    // if (recv(client_fd, &file_size, sizeof(file_size), MSG_WAITALL) != sizeof(file_size)) {
+    //     perror("Failed to receive file size");
+    //     return;
+    // }
+    // printf("Receiving file: %s (%ld bytes)\n", save_path, file_size);
+
+	// 接收檔案大小
+	int64_t net_file_size;
+	int size_received = recv(client_fd, &net_file_size, sizeof(net_file_size), MSG_WAITALL);
+	if (size_received != sizeof(net_file_size)) {
+		perror("Failed to receive file size");
+		close(client_fd);
+		pthread_exit(NULL);
+	}
+
+	file_size = be64toh(net_file_size); // 從大端序轉換為主機序
+	if (file_size <= 0) {
+		fprintf(stderr, "Invalid file size received: %ld\n", file_size);
+		close(client_fd);
+		pthread_exit(NULL);
+	}
+
+	printf("File size received: %ld bytes\n", file_size);
+
+    // 接收檔案內容
+    FILE *file = fopen(save_path, "wb");
+    if (!file) {
+        perror("Failed to create file");
+        return;
+    }
+
+    int64_t total_received = 0;
+    while (total_received < file_size) {
+        int bytes_received = recv(client_fd, buffer, BUFFER_SIZE, 0);
+        if (bytes_received <= 0) {
+            perror("Error receiving file content");
+            break;
+        }
+        fwrite(buffer, 1, bytes_received, file);
+        total_received += bytes_received;
+    }
+    fclose(file);
+
+    if (total_received == file_size) {
+        printf("File saved as '%s'\n", save_path);
+    } else {
+        printf("Incomplete file received for '%s'\n", save_path);
+    }
+}
+
 
 #define MAX_QUESTIONS 5
 #define MAX_ANSWER_OPTIONS 4

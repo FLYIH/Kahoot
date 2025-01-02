@@ -8,6 +8,21 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <machine/endian.h>
+
+#include <stdint.h>
+
+#if defined(__BYTE_ORDER) && __BYTE_ORDER == __LITTLE_ENDIAN || \
+    defined(_WIN32) || defined(__LITTLE_ENDIAN__)
+    #define htobe64(x) __builtin_bswap64(x)
+    #define be64toh(x) __builtin_bswap64(x)
+#elif defined(__BYTE_ORDER) && __BYTE_ORDER == __BIG_ENDIAN || \
+      defined(__BIG_ENDIAN__)
+    #define htobe64(x) (x)
+    #define be64toh(x) (x)
+#else
+    #error "Unknown byte order"
+#endif
 
 #define MAX_FILES 1024
 #define PATH_MAX 4096
@@ -88,7 +103,63 @@ end_selection:
     endwin();
 }
 
-// 傳送檔案到伺服器
+// // 傳送檔案到伺服器
+// void send_file_to_server(const char *file_path, int sock) {
+//     FILE *file = fopen(file_path, "rb");
+//     if (!file) {
+//         fprintf(stderr, "Error: File '%s' not found.\n", file_path);
+//         return;
+//     }
+
+//     // 傳送檔案名稱
+//     const char *file_name = strrchr(file_path, '/');
+//     file_name = file_name ? file_name + 1 : file_path;
+//     if (send(sock, file_name, strlen(file_name) + 1, 0) < 0) {
+//         perror("Failed to send file name");
+//         fclose(file);
+//         return;
+//     }
+//     printf("File name sent: %s\n", file_name);
+
+//     // 傳送檔案大小
+//     fseek(file, 0, SEEK_END);
+//     int64_t file_size = ftell(file);
+//     rewind(file);
+//     if (send(sock, &file_size, sizeof(file_size), 0) < 0) {
+//         perror("Failed to send file size");
+//         fclose(file);
+//         return;
+//     }
+//     printf("File size sent: %ld bytes\n", file_size);
+
+//     // 傳送檔案內容
+//     char buffer[BUFFSIZE];
+//     size_t bytes_read;
+//     long total_sent = 0;
+//     while ((bytes_read = fread(buffer, 1, BUFFSIZE, file)) > 0) {
+//         if (send(sock, buffer, bytes_read, 0) < 0) {
+//             perror("Failed to send file content");
+//             fclose(file);
+//             return;
+//         }
+//         total_sent += bytes_read;
+//         printf("Progress: %ld/%ld bytes\n", total_sent, file_size);
+//     }
+//     fclose(file);
+//     printf("File sent successfully. Total sent: %ld bytes\n", total_sent);
+
+//     // 接收伺服器回應
+//     char response[BUFFSIZE];
+//     int bytes_received = recv(sock, response, sizeof(response) - 1, 0);
+//     if (bytes_received > 0) {
+//         response[bytes_received] = '\0';
+//         printf("Server response: %s\n", response);
+//     } else {
+//         perror("Failed to receive server response");
+//     }
+// }
+
+
 void send_file_to_server(const char *file_path, int sock) {
     FILE *file = fopen(file_path, "rb");
     if (!file) {
@@ -96,10 +167,34 @@ void send_file_to_server(const char *file_path, int sock) {
         return;
     }
 
+    // 傳送準備訊號
+    const char *upload_signal = "UploadClient";
+    if (send(sock, upload_signal, strlen(upload_signal) + 1, 0) < 0) {
+        perror("Failed to send upload signal");
+        fclose(file);
+        return;
+    }
+
+    char server_response[BUFFSIZE];
+    int bytes_received = recv(sock, server_response, sizeof(server_response) - 1, 0);
+    if (bytes_received <= 0) {
+        perror("Server did not respond to upload signal");
+        fclose(file);
+        return;
+    }
+    server_response[bytes_received] = '\0';
+    if (strcmp(server_response, "Ready") != 0) {
+        fprintf(stderr, "Server is not ready: %s\n", server_response);
+        fclose(file);
+        return;
+    }
+
     // 傳送檔案名稱
     const char *file_name = strrchr(file_path, '/');
     file_name = file_name ? file_name + 1 : file_path;
-    if (send(sock, file_name, strlen(file_name) + 1, 0) < 0) {
+    uint16_t file_name_len = htons(strlen(file_name) + 1); // 加 1 包含 '\0'
+    if (send(sock, &file_name_len, sizeof(file_name_len), 0) < 0 || 
+        send(sock, file_name, strlen(file_name) + 1, 0) < 0) {
         perror("Failed to send file name");
         fclose(file);
         return;
@@ -110,7 +205,8 @@ void send_file_to_server(const char *file_path, int sock) {
     fseek(file, 0, SEEK_END);
     int64_t file_size = ftell(file);
     rewind(file);
-    if (send(sock, &file_size, sizeof(file_size), 0) < 0) {
+    int64_t net_file_size = htobe64(file_size); // 序列化為大端
+    if (send(sock, &net_file_size, sizeof(net_file_size), 0) < 0) {
         perror("Failed to send file size");
         fclose(file);
         return;
@@ -134,15 +230,15 @@ void send_file_to_server(const char *file_path, int sock) {
     printf("File sent successfully. Total sent: %ld bytes\n", total_sent);
 
     // 接收伺服器回應
-    char response[BUFFSIZE];
-    int bytes_received = recv(sock, response, sizeof(response) - 1, 0);
+    bytes_received = recv(sock, server_response, sizeof(server_response) - 1, 0);
     if (bytes_received > 0) {
-        response[bytes_received] = '\0';
-        printf("Server response: %s\n", response);
+        server_response[bytes_received] = '\0';
+        printf("Server response: %s\n", server_response);
     } else {
         perror("Failed to receive server response");
     }
 }
+
 
 // 主程式
 int main() {
