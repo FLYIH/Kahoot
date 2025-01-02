@@ -15,11 +15,11 @@ struct PlayerRanking {
     int score;
 };
 
-int compareScores(const void* a, const void* b) {
+/*static int compareScores(const void* a, const void* b) {
     PlayerRanking* playerA = (PlayerRanking*)a;
     PlayerRanking* playerB = (PlayerRanking*)b;
     return playerB->score - playerA->score;
-}
+}*/
 
 void run_final_screen(sf::RenderWindow& window, int& state, int sockfd) {
     sf::Font font;
@@ -36,19 +36,10 @@ void run_final_screen(sf::RenderWindow& window, int& state, int sockfd) {
     titleText.setPosition(300, 20);
 
     int currentScore = 0;
-    sf::Text scoreText("Your Score: 120", font, 30);
-    scoreText.setFillColor(sf::Color(50, 50, 50)); // 深灰色
-    scoreText.setPosition(300, 100);
+   
 
     PlayerRanking rankings[MAX_PLAYERS];
 
-    fd_set readfds;
-    struct timeval tv;
-    tv.tv_sec = 5;
-    tv.tv_usec = 0;
-
-    FD_ZERO(&readfds);
-    FD_SET(sockfd, &readfds);
 
     bool infoReceived = false;
 
@@ -91,10 +82,18 @@ void run_final_screen(sf::RenderWindow& window, int& state, int sockfd) {
         rankingScores[i].setString(std::to_string(rankings[i].score));
         sf::FloatRect scoreBounds = rankingScores[i].getLocalBounds();
         rankingScores[i].setPosition(
-            rankingBoxes[i].getPosition().x + rankingBoxes[i].getSize().x - scoreBounds.width - 10, // 右邊對齊
+            rankingBoxes[i].getPosition().x + rankingBoxes[i].getSize().x - scoreBounds.width - 10,
             rankingBoxes[i].getPosition().y + 13
         );
     }
+
+    fd_set readfds;
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 10000;
+
+    FD_ZERO(&readfds);
+    FD_SET(sockfd, &readfds);
 
     while (window.isOpen() && state == 5) {
         sf::Event event;
@@ -103,25 +102,24 @@ void run_final_screen(sf::RenderWindow& window, int& state, int sockfd) {
                 window.close();
             }
         }
-
-        // 使用 select 檢查是否有資料可讀
+        
         FD_ZERO(&readfds);
         FD_SET(sockfd, &readfds);
 
         tv.tv_sec = 0;
-        tv.tv_usec = 10000; // 10 毫秒
+        tv.tv_usec = 10000;
 
         int retval = select(sockfd + 1, &readfds, NULL, NULL, &tv);
-
+        window.close();
         if (retval > 0 && FD_ISSET(sockfd, &readfds)) {
             char recvline[MAXLINE];
             if (Readline(sockfd, recvline, MAXLINE) > 0) {
-                // std::cout << "read score\n";
-                if (strstr(recvline, "GameOver\n") != NULL) {
+                //std::cout << "readfinal : " << recvline;
+                if (strcmp(recvline, "GameOver\n") == 0) {
                     // close window
                     window.close();
-                    state = 0; // 設定 state 為 0，表示遊戲結束
-                    return; // 離開 function
+                    state = 0; 
+                    return;
                 }
                 if (strcmp(recvline, "FinalInfo\n") == 0) {
                     char names[MAX_PLAYERS][50];
@@ -155,7 +153,7 @@ void run_final_screen(sf::RenderWindow& window, int& state, int sockfd) {
                     }
 
                     // 排序
-                    qsort(rankings, MAX_PLAYERS, sizeof(PlayerRanking), compareScores);
+                    //qsort(rankings, MAX_PLAYERS, sizeof(PlayerRanking), compareScores);
                 }
             }
         }
@@ -163,7 +161,6 @@ void run_final_screen(sf::RenderWindow& window, int& state, int sockfd) {
         // 繪製畫面
         window.clear(backgroundColor);
         window.draw(titleText);
-        window.draw(scoreText);
 
         for (int i = 0; i < MAX_PLAYERS; ++i) {
             window.draw(rankingBoxes[i]);

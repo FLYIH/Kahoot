@@ -5,6 +5,7 @@
 #include "QuizScreen.h"
 #include "RankingScreen.h"
 #include "ResultScreen.h"
+#include "FinalScreen.h"
 #include "client.h"
 
 int main() {
@@ -40,7 +41,9 @@ int main() {
             run_ranking_screen(window, state, sockfd);
         } else if (state == 6) {
             std::cout << "upoad question";
-            
+
+        } else if (state == 7) {
+            run_final_screen(window, state, sockfd);
         }
     }
 

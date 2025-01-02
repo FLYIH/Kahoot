@@ -114,7 +114,8 @@ int run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd, bool& corr
                     buffer[n] = '\0';
 
                     if (strcmp(buffer, "Timeout\n") == 0) {
-                        std::cout << "Timeout\n";
+                        Readline(sockfd, buffer, MAXLINE);
+                        std::cout << "w : " << buffer;
                         state = 4;
                         return correctAnswer;
                     }
@@ -163,7 +164,7 @@ int run_quiz_screen(sf::RenderWindow& window, int& state, int sockfd, bool& corr
             if (event.type == sf::Event::Closed) {
                 window.close();
             }
-            if (event.type == sf::Event::MouseButtonPressed && !answered) {
+            if (event.type == sf::Event::MouseButtonPressed && !answered && questionReceived) {
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 
                 for (int i = 0; i < 4; i++) {

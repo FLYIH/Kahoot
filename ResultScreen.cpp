@@ -85,7 +85,7 @@ void run_result_screen(sf::RenderWindow& window, int& state, int sockfd, int cor
                     //memset(recvline, 0, sizeof(recvline));
                     Readline(sockfd, recvline, MAXLINE);
 
-                    std::cout << "got score = " << recvline << std::endl;
+                    //std::cout << "got score = " << recvline << std::endl;
 
                     // 解析數據
                     int a, b, c, d;
@@ -93,7 +93,7 @@ void run_result_screen(sf::RenderWindow& window, int& state, int sockfd, int cor
 
                     for (size_t i = 0; i < 4; ++i) {
                         std::ostringstream oss;
-                        oss << (i + 1) << " - Correct: " << correctCounts[i];
+                        oss << (i + 1) << " - Number: " << correctCounts[i];
                         optionTexts[i].setString(oss.str());
 
                         sf::FloatRect textBounds = optionTexts[i].getLocalBounds();

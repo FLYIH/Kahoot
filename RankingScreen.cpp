@@ -20,7 +20,7 @@ struct PlayerRanking {
 int compareScores(const void* a, const void* b) {
     PlayerRanking* playerA = (PlayerRanking*)a;
     PlayerRanking* playerB = (PlayerRanking*)b;
-    return playerB->score - playerA->score;
+    return playerB->score > playerA->score;
 }
 
 void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
@@ -32,15 +32,12 @@ void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
 
     sf::Color backgroundColor(255, 239, 170);
 
-    sf::Text titleText("Ranking", font, 50);
+    sf::Text titleText("Score Board", font, 50);
     titleText.setFillColor(sf::Color(32, 32, 32)); // 深灰色
     titleText.setStyle(sf::Text::Bold);
     titleText.setPosition(300, 20);
 
     int currentScore = 0;
-    sf::Text scoreText("Your Score: 120", font, 30);
-    scoreText.setFillColor(sf::Color(50, 50, 50)); // 深灰色
-    scoreText.setPosition(300, 100);
 
     PlayerRanking rankings[MAX_PLAYERS];
 
@@ -111,16 +108,22 @@ void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
         FD_SET(sockfd, &readfds);
 
         tv.tv_sec = 0;
-        tv.tv_usec = 10000; // 10 毫秒
+        tv.tv_usec = 10000;
 
         int retval = select(sockfd + 1, &readfds, NULL, NULL, &tv);
 
         if (retval > 0 && FD_ISSET(sockfd, &readfds)) {
             char recvline[MAXLINE];
             if (Readline(sockfd, recvline, MAXLINE) > 0) {
-                // std::cout << "read score\n";
+                //std::cout << "read : " << recvline;
                 if (strstr(recvline, "Question starts") != NULL) {
                     state = 3;
+                    return;
+                }
+                if (strcmp(recvline, "FinalInfo\n") == 0) {
+                    state = 7;
+                    std::cout << "final\n";
+                    window.close();
                     return;
                 }
                 if (strcmp(recvline, "Info\n") == 0) {
@@ -138,6 +141,7 @@ void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
                         rankings[i].name[sizeof(rankings[i].name) - 1] = '\0';
                         rankings[i].score = scores[i];
 
+
                         // 更新圖形介面的名字和分數
                         rankingNames[i].setString(rankings[i].name);
                         sf::FloatRect nameBounds = rankingNames[i].getLocalBounds();
@@ -152,10 +156,10 @@ void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
                             rankingBoxes[i].getPosition().x + rankingBoxes[i].getSize().x - scoreBounds.width - 10,
                             rankingBoxes[i].getPosition().y + 13
                         );
-                    }
 
-                    // 排序
-                    qsort(rankings, MAX_PLAYERS, sizeof(PlayerRanking), compareScores);
+                        // 排序
+                        //qsort(rankings, MAX_PLAYERS, sizeof(PlayerRanking), compareScores);
+                    }
                 }
             }
         }
@@ -163,7 +167,6 @@ void run_ranking_screen(sf::RenderWindow& window, int& state, int sockfd) {
         // 繪製畫面
         window.clear(backgroundColor);
         window.draw(titleText);
-        window.draw(scoreText);
 
         for (int i = 0; i < MAX_PLAYERS; ++i) {
             window.draw(rankingBoxes[i]);
