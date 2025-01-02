@@ -40,8 +40,7 @@ int main() {
         } else if (state == 5) {
             run_ranking_screen(window, state, sockfd);
         } else if (state == 6) {
-            std::cout << "upoad question";
-
+            window.close();
         } else if (state == 7) {
             run_final_screen(window, state, sockfd);
         }

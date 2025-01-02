@@ -64,7 +64,7 @@ void run_sfml_gui(sf::RenderWindow& window, int& state, int sockfd) {
         }
 
         //test
-        nameInput = "e";
+        //nameInput = "e";
         // Cursor blinking logic
         if (cursorClock.getElapsedTime().asMilliseconds() > 500) {
             showCursor = !showCursor;
