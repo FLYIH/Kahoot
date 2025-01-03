@@ -5,8 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
-#include <machine/endian.h>
+#include <endian.h>
 
 
 #if defined(__BYTE_ORDER) && __BYTE_ORDER == __LITTLE_ENDIAN || \

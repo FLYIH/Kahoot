@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h> // for int64_t
+#include <stdint.h>
 #include <ncurses.h>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <machine/endian.h>
+#include <endian.h>
 
 #include <stdint.h>
 
