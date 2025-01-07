@@ -3,51 +3,45 @@ include ../Make.defines
 CXX = g++
 CXXFLAGS = -Wall -g
 SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system
-PROGS =	server client_gui test_client uploadserver uploadclient
+PROGS =	server client_gui test_client
 
 all:	${PROGS}
-
-uploadserver:	uploadserver.o
-		${CC} ${CFLAGS} -o $@ uploadserver.o ${LIBS}
-
-uploadclient:	uploadclient.o
-		${CC} -I../lib -g -O2 -D_REENTRANT -Wall -o $@ uploadclient.o ${LIBS} -lncurses
 
 server:	server.o
 		${CC} ${CFLAGS} -o $@ server.o ${LIBS}
 
-test_client:	test_client.o
-		${CC} ${CFLAGS} -o $@ test_client.o ${LIBS}
+test_client:	client/test_client.o
+		${CC} ${CFLAGS} -o $@ client/test_client.o ${LIBS}
 
-client_gui:	client.o sfml_gui.o MainMenu.o WaitingScreen.o QuizScreen.o RankingScreen.o ResultScreen.o FinalScreen.o main.o
-		${CXX} ${CXXFLAGS} -I../lib -o $@ client.o sfml_gui.o MainMenu.o WaitingScreen.o QuizScreen.o RankingScreen.o ResultScreen.o FinalScreen.o main.o ${LIBS} ${SFML_LIBS}
+client_gui:	client/client.o client/sfml_gui.o client/MainMenu.o client/WaitingScreen.o client/QuizScreen.o client/RankingScreen.o client/ResultScreen.o client/FinalScreen.o client/main.o
+		${CXX} ${CXXFLAGS} -I../lib -o $@ client/client.o client/sfml_gui.o client/MainMenu.o client/WaitingScreen.o client/QuizScreen.o client/RankingScreen.o client/ResultScreen.o client/FinalScreen.o client/main.o ${LIBS} ${SFML_LIBS}
 
-client.o:	client.c
-		${CC} ${CFLAGS} -c client.c -o client.o
+client/client.o:	client/client.c
+		${CC} ${CFLAGS} -c client/client.c -o client/client.o
 
-FinalScreen.o:	FinalScreen.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c FinalScreen.cpp -o FinalScreen.o
+client/FinalScreen.o:	client/FinalScreen.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/FinalScreen.cpp -o client/FinalScreen.o
 
-ResultScreen.o:	ResultScreen.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c ResultScreen.cpp -o ResultScreen.o
+client/ResultScreen.o:	client/ResultScreen.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/ResultScreen.cpp -o client/ResultScreen.o
 
-RankingScreen.o:	RankingScreen.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c RankingScreen.cpp -o RankingScreen.o
+client/RankingScreen.o:	client/RankingScreen.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/RankingScreen.cpp -o client/RankingScreen.o
 
-QuizScreen.o:	QuizScreen.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c QuizScreen.cpp -o QuizScreen.o
+client/QuizScreen.o:	client/QuizScreen.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/QuizScreen.cpp -o client/QuizScreen.o
 
-WaitingScreen.o:	WaitingScreen.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c WaitingScreen.cpp -o WaitingScreen.o
+client/WaitingScreen.o:	client/WaitingScreen.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/WaitingScreen.cpp -o client/WaitingScreen.o
 
-sfml_gui.o:	sfml_gui.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c sfml_gui.cpp -o sfml_gui.o
+client/sfml_gui.o:	client/sfml_gui.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/sfml_gui.cpp -o client/sfml_gui.o
 
-MainMenu.o:	MainMenu.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c MainMenu.cpp -o MainMenu.o
+client/MainMenu.o:	client/MainMenu.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/MainMenu.cpp -o client/MainMenu.o
 
-main.o:	main.cpp
-		${CXX} ${CXXFLAGS} -I../lib -c main.cpp -o main.o
+client/main.o:	client/main.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/main.cpp -o client/main.o
 
 clean:
-		rm -f ${PROGS} *.o
+		rm -f ${PROGS} *.o client/*.o
