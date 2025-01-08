@@ -40,4 +40,10 @@ make
 ./client_gui
 ```
 
+## Sequence Diagram
+
+Below is the sequence diagram illustrating the workflow of this project:
+
+![sequence diagram](docs/Flow_chart.png)
+
 [Demo Video-Kahoot](https://youtu.be/n9zhfwTx_iU)
