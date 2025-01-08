@@ -15,15 +15,15 @@
     #error "Unknown byte order"
 #endif
 
-void send_file(int sockfd, const char *file_path) {
+std::string send_file(int sockfd, const char *file_path) {
     FILE *file = fopen(file_path, "rb");
     if (!file) {
-        fprintf(stderr, "Error: Cannot open file '%s'.\n", file_path);
-        return;
+        return "Error: Cannot open file.";
     }
 
     const char *file_name = strrchr(file_path, '/');
     file_name = file_name ? file_name + 1 : file_path;
+
     char sendline[MAXLINE];
     snprintf(sendline, sizeof(sendline), "UPLOAD %s\n", file_name);
     Writen(sockfd, sendline, strlen(sendline));
@@ -34,62 +34,100 @@ void send_file(int sockfd, const char *file_path) {
 
     int64_t net_file_size = htobe64(file_size);
     Writen(sockfd, &net_file_size, sizeof(net_file_size));
-    printf("File size sent: %ld bytes\n", file_size);
 
     char buffer[MAXLINE];
-    size_t bytes_read, total_sent = 0;
+    size_t bytes_read;
     while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
         Writen(sockfd, buffer, bytes_read);
-        total_sent += bytes_read;
-        printf("Progress: %zu/%ld bytes\n", total_sent, file_size);
     }
 
     fclose(file);
-    printf("File '%s' sent successfully.\n", file_name);
 
     if (Readline(sockfd, buffer, MAXLINE) > 0) {
-        printf("Server response: %s", buffer);
+        return std::string(buffer);
     }
+
+    return "No response from server.";
 }
 
-void run_test_client(int sockfd, const char *server_ip, const char *name) {
-    char sendline[MAXLINE], recvline[MAXLINE];
-    fd_set readfds;
 
+void run_test_client(sf::RenderWindow& window, int& state, int sockfd, const char *server_ip, const char *name) {
+    char sendline[MAXLINE];
     snprintf(sendline, sizeof(sendline), "%s\n", name);
     Writen(sockfd, sendline, strlen(sendline));
 
-    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf")) {
+        std::cerr << "Error loading font\n";
+        return;
+    }
 
-    while (1) {
-        FD_ZERO(&readfds);
-        FD_SET(sockfd, &readfds);
-        FD_SET(STDIN_FILENO, &readfds);
+    // Text fields
+    sf::Text promptText("Enter File Path :", font, 20);
+    promptText.setFillColor(sf::Color::Black);
+    promptText.setPosition(300, 200);
 
-        int maxfd = max(sockfd, STDIN_FILENO) + 1;
-        select(maxfd, &readfds, NULL, NULL, NULL);
+    sf::RectangleShape fileInputBox(sf::Vector2f(300, 40));
+    fileInputBox.setPosition(250, 250);
+    fileInputBox.setFillColor(sf::Color::White);
+    fileInputBox.setOutlineColor(sf::Color::Black);
+    fileInputBox.setOutlineThickness(2);
 
-        if (FD_ISSET(sockfd, &readfds)) {
-            if (Readline(sockfd, recvline, MAXLINE) > 0) {
-                Fputs(recvline, stdout);
-            } else  {
-                break;
+    sf::String fileInput;
+    sf::Text fileDisplay("", font, 20);
+    fileDisplay.setFillColor(sf::Color::Black);
+    fileDisplay.setPosition(260, 255);
+
+    sf::Text responseDisplay("", font, 20);
+    responseDisplay.setFillColor(sf::Color::Red);
+    responseDisplay.setPosition(250, 300);
+
+    bool showCursor = true;
+    sf::Clock cursorClock;
+
+    while (window.isOpen() && state == 6) {
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                window.close();
+                close_connection(sockfd);
+            }
+
+            if (event.type == sf::Event::TextEntered) {
+                if (event.text.unicode == '\b') {
+                    if (!fileInput.isEmpty()) {
+                        fileInput.erase(fileInput.getSize() - 1);
+                    }
+                } else if (event.text.unicode == '\r') {
+                    if (!fileInput.isEmpty()) {
+                        std::string filePath = fileInput.toAnsiString();
+                        snprintf(sendline, sizeof(sendline), "%s", filePath.c_str());
+                        std::string serverResponse = send_file(sockfd, sendline);
+                        responseDisplay.setString(serverResponse);
+                        fileInput.clear();
+                        
+                        if (serverResponse == "success\n") {
+                            state = 8;
+                        }
+                    }
+                } else if (event.text.unicode < 128) {
+                    fileInput += static_cast<char>(event.text.unicode);
+                }
             }
         }
 
-        if (FD_ISSET(STDIN_FILENO, &readfds)) {
-            if (Fgets(sendline, MAXLINE, stdin) != NULL) {
-                /*if (strncmp(sendline, "UPLOAD ", 7) == 0) {
-                    char *file_path = sendline + 7;
-                    file_path[strcspn(file_path, "\n")] = '\0';
-                    send_file(sockfd, file_path);
-                } else {
-                    Writen(sockfd, sendline, strlen(sendline));
-                }*/
-                sendline[strcspn(sendline, "\n")] = '\0';
-                send_file(sockfd, sendline);
-            }
+        if (cursorClock.getElapsedTime().asMilliseconds() > 500) {
+            showCursor = !showCursor;
+            cursorClock.restart();
         }
+
+        fileDisplay.setString(fileInput + (showCursor ? "|" : ""));
+
+        window.clear(sf::Color(255, 239, 170));
+        window.draw(promptText);
+        window.draw(fileInputBox);
+        window.draw(fileDisplay);
+        window.draw(responseDisplay);
+        window.display();
     }
 }
