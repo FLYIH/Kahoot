@@ -6,6 +6,7 @@
 #include "RankingScreen.h"
 #include "ResultScreen.h"
 #include "FinalScreen.h"
+#include "test_client.h"
 #include "client.h"
 
 int main() {
@@ -29,9 +30,7 @@ int main() {
                 state = 0;
             }
         } else if (state == 2) {
-            //std::cout << "waiting\n";
             run_waiting_screen(window, state, sockfd);
-            //state = 0;
         } else if (state == 3) {
             correct = false;
             correctAnswer = run_quiz_screen(window, state, sockfd, correct);
@@ -41,8 +40,10 @@ int main() {
             run_ranking_screen(window, state, sockfd);
         } else if (state == 6) {
             window.close();
+            run_test_client(sockfd, ipAddress.c_str() , "UploadClient");
         } else if (state == 7) {
             run_final_screen(window, state, sockfd);
+            state = 0;
         }
     }
 

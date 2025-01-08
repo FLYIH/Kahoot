@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
             printf("UploadClient detected. Handling upload...\n");
             handle_upload(tmp);
             close(tmp);
-            continue; // 繼續接受下一個連線
+            continue;
         }
 
         flag = 0;
@@ -140,14 +140,13 @@ void handle_upload(int client_fd) {
     char file_name[BUFFER_SIZE];
     int64_t file_size;
 
-    // 接收檔案名稱
+
     if (recv(client_fd, file_name, sizeof(file_name) - 1, 0) <= 0) {
         perror("Failed to receive file name");
         return;
     }
-    file_name[strcspn(file_name, "\r\n")] = '\0'; // 移除換行符號
-
-    // 確定新檔案名稱
+    file_name[strcspn(file_name, "\r\n")] = '\0';
+  
     int max_index = 5;
     DIR *dir = opendir(QUESTIONS_DIR);
     if (dir) {
@@ -175,11 +174,12 @@ void handle_upload(int client_fd) {
     // }
     // printf("Receiving file: %s (%ld bytes)\n", save_path, file_size);
 
-	// 接收檔案大小
+
 	int64_t net_file_size;
 	int size_received = recv(client_fd, &net_file_size, sizeof(net_file_size), MSG_WAITALL);
 	if (size_received != sizeof(net_file_size)) {
 		perror("Failed to receive file size");
+		Writen(client_fd, "fail\n", 5);
 		close(client_fd);
 		pthread_exit(NULL);
 	}
@@ -197,6 +197,7 @@ void handle_upload(int client_fd) {
     FILE *file = fopen(save_path, "wb");
     if (!file) {
         perror("Failed to create file");
+				Writen(client_fd, "fail\n", 5);
         return;
     }
 
@@ -214,8 +215,10 @@ void handle_upload(int client_fd) {
 
     if (total_received == file_size) {
         printf("File saved as '%s'\n", save_path);
+				Writen(client_fd, "success\n", 8);
     } else {
         printf("Incomplete file received for '%s'\n", save_path);
+				Writen(client_fd, "fail\n", 5);
     }
 }
 

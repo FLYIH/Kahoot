@@ -23,11 +23,6 @@ make
 ./server
 ```
 
-#### Run the Client
-```bash
-./test_client
-```
-
 #### Run the Client (GUI)
 ```bash
 ./client_gui

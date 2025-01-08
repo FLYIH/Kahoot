@@ -3,21 +3,23 @@ include ../Make.defines
 CXX = g++
 CXXFLAGS = -Wall -g
 SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system
-PROGS =	server client_gui test_client
+PROGS =	server client_gui
 
 all:	${PROGS}
 
 server:	server.o
 		${CC} ${CFLAGS} -o $@ server.o ${LIBS}
 
-test_client:	client/test_client.o
-		${CC} ${CFLAGS} -o $@ client/test_client.o ${LIBS}
 
-client_gui:	client/client.o client/sfml_gui.o client/MainMenu.o client/WaitingScreen.o client/QuizScreen.o client/RankingScreen.o client/ResultScreen.o client/FinalScreen.o client/main.o
-		${CXX} ${CXXFLAGS} -I../lib -o $@ client/client.o client/sfml_gui.o client/MainMenu.o client/WaitingScreen.o client/QuizScreen.o client/RankingScreen.o client/ResultScreen.o client/FinalScreen.o client/main.o ${LIBS} ${SFML_LIBS}
+
+client_gui:	client/client.o client/sfml_gui.o client/MainMenu.o client/WaitingScreen.o client/QuizScreen.o client/RankingScreen.o client/ResultScreen.o client/FinalScreen.o client/test_client.o client/main.o
+		${CXX} ${CXXFLAGS} -I../lib -o $@ client/client.o client/sfml_gui.o client/MainMenu.o client/WaitingScreen.o client/QuizScreen.o client/RankingScreen.o client/ResultScreen.o client/FinalScreen.o client/test_client.o client/main.o ${LIBS} ${SFML_LIBS}
 
 client/client.o:	client/client.c
 		${CC} ${CFLAGS} -c client/client.c -o client/client.o
+
+client/test_client.o:	client/test_client.cpp
+		${CXX} ${CXXFLAGS} -I../lib -c client/test_client.cpp -o client/test_client.o
 
 client/FinalScreen.o:	client/FinalScreen.cpp
 		${CXX} ${CXXFLAGS} -I../lib -c client/FinalScreen.cpp -o client/FinalScreen.o

@@ -82,7 +82,6 @@ void MainMenu::handleEvents(sf::RenderWindow& window, int& state, std::string& i
             }
             
         }
-        //ipInput = "127.0.0.1";
         if (event.type == sf::Event::MouseButtonPressed) {
             if (event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
@@ -98,7 +97,12 @@ void MainMenu::handleEvents(sf::RenderWindow& window, int& state, std::string& i
                 }
 
                 if (uploadButton.getGlobalBounds().contains(mousePos.x, mousePos.y)) {
-                    
+                    ipAddress = ipInput;
+                    sockfd = connect_to_server(ipAddress.c_str());
+                    if (sockfd < 0) {
+                        std::cerr << "Failed to connect to server\n";
+                        return;
+                    }
                     state = 6; // 切換到上傳畫面
                 }
             }
